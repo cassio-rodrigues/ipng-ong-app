@@ -25,7 +25,7 @@ class User(Base):
     created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    teacher_profile: Mapped[TeacherProfile | None] = relationship("TeacherProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    teacher_profile: Mapped[TeacherProfile | None] = relationship("TeacherProfile", back_populates="user", uselist=False, cascade="all, delete-orphan", lazy="selectin")
 
 
 class TeacherProfile(Base):
@@ -37,4 +37,4 @@ class TeacherProfile(Base):
     experience_years: Mapped[int | None] = mapped_column(Integer)
     availability: Mapped[str | None] = mapped_column(Text)
 
-    user: Mapped[User] = relationship("User", back_populates="teacher_profile")
+    user: Mapped[User] = relationship("User", back_populates="teacher_profile", lazy="selectin")

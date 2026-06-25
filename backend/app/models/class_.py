@@ -23,10 +23,10 @@ class Class_(Base):
     start_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     end_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
-    unit: Mapped["Unit | None"] = relationship("Unit", foreign_keys=[unit_id])  # type: ignore[name-defined]
-    main_teacher: Mapped["User | None"] = relationship("User", foreign_keys=[main_teacher_id])  # type: ignore[name-defined]
-    book: Mapped["Book | None"] = relationship("Book", foreign_keys=[book_id])  # type: ignore[name-defined]
-    assignments: Mapped[list[ClassAssignment]] = relationship("ClassAssignment", back_populates="class_", cascade="all, delete-orphan")
+    unit: Mapped["Unit | None"] = relationship("Unit", foreign_keys=[unit_id], lazy="selectin")  # type: ignore[name-defined]
+    main_teacher: Mapped["User | None"] = relationship("User", foreign_keys=[main_teacher_id], lazy="selectin")  # type: ignore[name-defined]
+    book: Mapped["Book | None"] = relationship("Book", foreign_keys=[book_id], lazy="selectin")  # type: ignore[name-defined]
+    assignments: Mapped[list[ClassAssignment]] = relationship("ClassAssignment", back_populates="class_", cascade="all, delete-orphan", lazy="selectin")
 
 
 class ClassAssignment(Base):
@@ -37,5 +37,5 @@ class ClassAssignment(Base):
     teacher_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
     role: Mapped[str | None] = mapped_column(String)
 
-    class_: Mapped[Class_] = relationship("Class_", back_populates="assignments")
-    teacher: Mapped["User"] = relationship("User", foreign_keys=[teacher_id])  # type: ignore[name-defined]
+    class_: Mapped[Class_] = relationship("Class_", back_populates="assignments", lazy="selectin")
+    teacher: Mapped["User"] = relationship("User", foreign_keys=[teacher_id], lazy="selectin")  # type: ignore[name-defined]

@@ -23,9 +23,9 @@ class Assessment(Base):
     max_score: Mapped[int | None] = mapped_column(Integer)
     created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
-    class_: Mapped["Class_ | None"] = relationship("Class_", foreign_keys=[class_id])  # type: ignore[name-defined]
-    creator: Mapped["User | None"] = relationship("User", foreign_keys=[created_by])  # type: ignore[name-defined]
-    grades: Mapped[list[StudentGrade]] = relationship("StudentGrade", back_populates="assessment", cascade="all, delete-orphan")
+    class_: Mapped["Class_ | None"] = relationship("Class_", foreign_keys=[class_id], lazy="selectin")  # type: ignore[name-defined]
+    creator: Mapped["User | None"] = relationship("User", foreign_keys=[created_by], lazy="selectin")  # type: ignore[name-defined]
+    grades: Mapped[list[StudentGrade]] = relationship("StudentGrade", back_populates="assessment", cascade="all, delete-orphan", lazy="selectin")
 
 
 class StudentGrade(Base):
@@ -38,5 +38,5 @@ class StudentGrade(Base):
     feedback: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    assessment: Mapped[Assessment] = relationship("Assessment", back_populates="grades")
-    student: Mapped["Student"] = relationship("Student", foreign_keys=[student_id])  # type: ignore[name-defined]
+    assessment: Mapped[Assessment] = relationship("Assessment", back_populates="grades", lazy="selectin")
+    student: Mapped["Student"] = relationship("Student", foreign_keys=[student_id], lazy="selectin")  # type: ignore[name-defined]

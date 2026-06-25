@@ -24,5 +24,5 @@ class CalendarEvent(Base):
     created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     visibility: Mapped[str | None] = mapped_column(String, default="all")
 
-    unit: Mapped["Unit | None"] = relationship("Unit", foreign_keys=[unit_id])  # type: ignore[name-defined]
-    creator: Mapped["User | None"] = relationship("User", foreign_keys=[created_by])  # type: ignore[name-defined]
+    unit: Mapped["Unit | None"] = relationship("Unit", foreign_keys=[unit_id], lazy="selectin")  # type: ignore[name-defined]
+    creator: Mapped["User | None"] = relationship("User", foreign_keys=[created_by], lazy="selectin")  # type: ignore[name-defined]

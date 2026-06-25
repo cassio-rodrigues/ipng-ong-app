@@ -23,8 +23,8 @@ class Student(Base):
     status: Mapped[str | None] = mapped_column(String, default="active")
     created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    unit: Mapped["Unit | None"] = relationship("Unit", foreign_keys=[unit_id])  # type: ignore[name-defined]
-    enrollments: Mapped[list[Enrollment]] = relationship("Enrollment", back_populates="student", cascade="all, delete-orphan")
+    unit: Mapped["Unit | None"] = relationship("Unit", foreign_keys=[unit_id], lazy="selectin")  # type: ignore[name-defined]
+    enrollments: Mapped[list[Enrollment]] = relationship("Enrollment", back_populates="student", cascade="all, delete-orphan", lazy="selectin")
 
 
 class Enrollment(Base):
@@ -36,5 +36,5 @@ class Enrollment(Base):
     enrollment_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
     status: Mapped[str | None] = mapped_column(String, default="active")
 
-    student: Mapped[Student] = relationship("Student", back_populates="enrollments")
-    class_: Mapped["Class_"] = relationship("Class_", foreign_keys=[class_id])  # type: ignore[name-defined]
+    student: Mapped[Student] = relationship("Student", back_populates="enrollments", lazy="selectin")
+    class_: Mapped["Class_"] = relationship("Class_", foreign_keys=[class_id], lazy="selectin")  # type: ignore[name-defined]

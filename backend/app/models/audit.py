@@ -20,4 +20,4 @@ class AuditLog(Base):
     entity_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    user: Mapped["User | None"] = relationship("User", foreign_keys=[user_id])  # type: ignore[name-defined]
+    user: Mapped["User | None"] = relationship("User", foreign_keys=[user_id], lazy="selectin")  # type: ignore[name-defined]

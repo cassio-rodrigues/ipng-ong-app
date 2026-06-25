@@ -20,7 +20,7 @@ class Book(Base):
     isbn: Mapped[str | None] = mapped_column(String)
     active: Mapped[bool | None] = mapped_column(Boolean, default=True)
 
-    chapters: Mapped[list[BookChapter]] = relationship("BookChapter", back_populates="book", cascade="all, delete-orphan", order_by="BookChapter.order_index")
+    chapters: Mapped[list[BookChapter]] = relationship("BookChapter", back_populates="book", cascade="all, delete-orphan", order_by="BookChapter.order_index", lazy="selectin")
 
 
 class BookChapter(Base):
@@ -31,4 +31,4 @@ class BookChapter(Base):
     title: Mapped[str | None] = mapped_column(String)
     order_index: Mapped[int | None] = mapped_column(Integer)
 
-    book: Mapped[Book] = relationship("Book", back_populates="chapters")
+    book: Mapped[Book] = relationship("Book", back_populates="chapters", lazy="selectin")

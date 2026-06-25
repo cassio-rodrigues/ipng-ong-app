@@ -20,4 +20,4 @@ class Unit(Base):
     status: Mapped[str | None] = mapped_column(String, default="active")
     created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    coordinator: Mapped["User | None"] = relationship("User", foreign_keys=[coordinator_id])  # type: ignore[name-defined]
+    coordinator: Mapped["User | None"] = relationship("User", foreign_keys=[coordinator_id], lazy="selectin")  # type: ignore[name-defined]

@@ -20,5 +20,5 @@ class Attendance(Base):
     check_in_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     notes: Mapped[str | None] = mapped_column(Text)
 
-    lesson: Mapped["Lesson"] = relationship("Lesson", foreign_keys=[lesson_id])  # type: ignore[name-defined]
-    student: Mapped["Student"] = relationship("Student", foreign_keys=[student_id])  # type: ignore[name-defined]
+    lesson: Mapped["Lesson"] = relationship("Lesson", foreign_keys=[lesson_id], lazy="selectin")  # type: ignore[name-defined]
+    student: Mapped["Student"] = relationship("Student", foreign_keys=[student_id], lazy="selectin")  # type: ignore[name-defined]
