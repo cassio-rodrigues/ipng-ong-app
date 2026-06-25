@@ -61,7 +61,7 @@ export default function UnitsPage() {
   const F = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
   const coordMap = Object.fromEntries(coordinators.map(c => [c.id, c.name]))
 
-  const FormFields = () => (
+  const formFields = () => (
     <div className="space-y-4 mt-2">
       <div className="space-y-1.5"><Label>Nome</Label><Input value={form.name} onChange={e => F("name", e.target.value)} required /></div>
       <div className="space-y-1.5"><Label>Endereço</Label><Input value={form.address} onChange={e => F("address", e.target.value)} /></div>
@@ -83,7 +83,8 @@ export default function UnitsPage() {
           <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Nova unidade</Button></DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Nova unidade</DialogTitle></DialogHeader>
-            <form onSubmit={handleCreate}><FormFields />
+            <form onSubmit={handleCreate}>
+              {formFields()}
               <div className="flex justify-end gap-2 pt-4">
                 <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
                 <Button type="submit" disabled={saving}>{saving ? "Salvando…" : "Criar"}</Button>
@@ -96,7 +97,8 @@ export default function UnitsPage() {
       <Dialog open={!!editUnit} onOpenChange={o => !o && setEditUnit(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Editar unidade</DialogTitle></DialogHeader>
-          <form onSubmit={handleEdit}><FormFields />
+          <form onSubmit={handleEdit}>
+            {formFields()}
             <div className="flex justify-end gap-2 pt-4">
               <Button type="button" variant="outline" onClick={() => setEditUnit(null)}>Cancelar</Button>
               <Button type="submit" disabled={saving}>{saving ? "Salvando…" : "Salvar"}</Button>

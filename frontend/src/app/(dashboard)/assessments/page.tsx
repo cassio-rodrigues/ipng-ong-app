@@ -62,7 +62,7 @@ export default function AssessmentsPage() {
   const F = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
   const classMap = Object.fromEntries(classes.map(c => [c.id, c.name]))
 
-  const FormFields = () => (
+  const formFields = () => (
     <div className="space-y-4 mt-2">
       <div className="space-y-1.5"><Label>Título</Label><Input value={form.title} onChange={e => F("title", e.target.value)} required /></div>
       <div className="space-y-1.5">
@@ -106,7 +106,8 @@ export default function AssessmentsPage() {
           <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Nova avaliação</Button></DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Nova avaliação</DialogTitle></DialogHeader>
-            <form onSubmit={handleCreate}><FormFields />
+            <form onSubmit={handleCreate}>
+              {formFields()}
               <div className="flex justify-end gap-2 pt-4">
                 <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
                 <Button type="submit" disabled={saving || !form.class_id}>{saving ? "Salvando…" : "Criar"}</Button>
@@ -119,7 +120,8 @@ export default function AssessmentsPage() {
       <Dialog open={!!editAssessment} onOpenChange={o => !o && setEditAssessment(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Editar avaliação</DialogTitle></DialogHeader>
-          <form onSubmit={handleEdit}><FormFields />
+          <form onSubmit={handleEdit}>
+            {formFields()}
             <div className="flex justify-end gap-2 pt-4">
               <Button type="button" variant="outline" onClick={() => setEditAssessment(null)}>Cancelar</Button>
               <Button type="submit" disabled={saving}>{saving ? "Salvando…" : "Salvar"}</Button>

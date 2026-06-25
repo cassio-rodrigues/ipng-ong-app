@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { activitiesApi, classesApi, studentsApi, classesApi as cls } from "@/lib/api"
+import { activitiesApi, classesApi } from "@/lib/api"
 import type { Activity, Class_, Student } from "@/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -52,7 +52,7 @@ export default function ActivitiesPage() {
   async function openResponses(a: Activity) {
     setResponseActivity(a)
     if (a.class_id) {
-      const { data } = await cls.getStudents(a.class_id)
+      const { data } = await classesApi.getStudents(a.class_id)
       setResponseStudents(data)
       setResponses(data.map((s: Student) => ({ student_id: s.id, status: "participated", score: "", notes: "" })))
     }
@@ -82,7 +82,7 @@ export default function ActivitiesPage() {
   const classMap = Object.fromEntries(classes.map(c => [c.id, c.name]))
   const studentMap = Object.fromEntries(responseStudents.map(s => [s.id, s.full_name]))
 
-  const FormFields = () => (
+  const formFields = () => (
     <div className="space-y-4 mt-2">
       <div className="space-y-1.5"><Label>Título</Label><Input value={form.title} onChange={e => F("title", e.target.value)} required /></div>
       <div className="grid grid-cols-2 gap-4">
@@ -119,7 +119,8 @@ export default function ActivitiesPage() {
           <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Nova atividade</Button></DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Nova atividade</DialogTitle></DialogHeader>
-            <form onSubmit={handleCreate}><FormFields />
+            <form onSubmit={handleCreate}>
+              {formFields()}
               <div className="flex justify-end gap-2 pt-4">
                 <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
                 <Button type="submit" disabled={saving || !form.class_id}>{saving ? "Salvando…" : "Criar"}</Button>
@@ -132,7 +133,8 @@ export default function ActivitiesPage() {
       <Dialog open={!!editActivity} onOpenChange={o => !o && setEditActivity(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Editar atividade</DialogTitle></DialogHeader>
-          <form onSubmit={handleEdit}><FormFields />
+          <form onSubmit={handleEdit}>
+            {formFields()}
             <div className="flex justify-end gap-2 pt-4">
               <Button type="button" variant="outline" onClick={() => setEditActivity(null)}>Cancelar</Button>
               <Button type="submit" disabled={saving}>{saving ? "Salvando…" : "Salvar"}</Button>

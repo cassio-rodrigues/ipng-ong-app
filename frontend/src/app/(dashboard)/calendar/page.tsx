@@ -60,7 +60,7 @@ export default function CalendarPage() {
 
   const F = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
 
-  const FormFields = () => (
+  const formFields = () => (
     <div className="space-y-4 mt-2">
       <div className="space-y-1.5"><Label>Título</Label><Input value={form.title} onChange={e => F("title", e.target.value)} required /></div>
       <div className="grid grid-cols-2 gap-4">
@@ -113,7 +113,7 @@ export default function CalendarPage() {
           <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Novo evento</Button></DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle>Novo evento</DialogTitle></DialogHeader>
-            <form onSubmit={handleCreate}><FormFields />
+            <form onSubmit={handleCreate}>{formFields()}
               <div className="flex justify-end gap-2 pt-4">
                 <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
                 <Button type="submit" disabled={saving}>{saving ? "Salvando…" : "Criar"}</Button>
@@ -126,7 +126,7 @@ export default function CalendarPage() {
       <Dialog open={!!editEvent} onOpenChange={o => !o && setEditEvent(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Editar evento</DialogTitle></DialogHeader>
-          <form onSubmit={handleEdit}><FormFields />
+          <form onSubmit={handleEdit}>{formFields()}
             <div className="flex justify-end gap-2 pt-4">
               <Button type="button" variant="outline" onClick={() => setEditEvent(null)}>Cancelar</Button>
               <Button type="submit" disabled={saving}>{saving ? "Salvando…" : "Salvar"}</Button>

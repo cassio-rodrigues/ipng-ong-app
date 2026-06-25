@@ -69,7 +69,7 @@ export default function ClassesPage() {
   const unitMap = Object.fromEntries(units.map(u => [u.id, u.name]))
   const teacherMap = Object.fromEntries(teachers.map(t => [t.id, t.name]))
 
-  const FormFields = () => (
+  const formFields = () => (
     <div className="space-y-4 mt-2">
       <div className="space-y-1.5"><Label>Nome da turma</Label><Input value={form.name} onChange={e => F("name", e.target.value)} required /></div>
       <div className="grid grid-cols-2 gap-4">
@@ -117,7 +117,8 @@ export default function ClassesPage() {
           <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Nova turma</Button></DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle>Nova turma</DialogTitle></DialogHeader>
-            <form onSubmit={handleCreate}><FormFields />
+            <form onSubmit={handleCreate}>
+              {formFields()}
               <div className="flex justify-end gap-2 pt-4">
                 <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
                 <Button type="submit" disabled={saving}>{saving ? "Salvando…" : "Criar"}</Button>
@@ -130,7 +131,8 @@ export default function ClassesPage() {
       <Dialog open={!!editClass} onOpenChange={o => !o && setEditClass(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Editar turma</DialogTitle></DialogHeader>
-          <form onSubmit={handleEdit}><FormFields />
+          <form onSubmit={handleEdit}>
+            {formFields()}
             <div className="flex justify-end gap-2 pt-4">
               <Button type="button" variant="outline" onClick={() => setEditClass(null)}>Cancelar</Button>
               <Button type="submit" disabled={saving}>{saving ? "Salvando…" : "Salvar"}</Button>

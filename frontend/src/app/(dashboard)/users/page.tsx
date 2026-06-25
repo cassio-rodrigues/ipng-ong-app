@@ -60,7 +60,7 @@ export default function UsersPage() {
 
   const F = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
 
-  const FormFields = ({ isEdit }: { isEdit?: boolean }) => (
+  const formFields = (isEdit?: boolean) => (
     <div className="space-y-4 mt-2">
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5"><Label>Nome</Label><Input value={form.name} onChange={e => F("name", e.target.value)} required /></div>
@@ -110,7 +110,8 @@ export default function UsersPage() {
           <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Novo usuário</Button></DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle>Novo usuário</DialogTitle></DialogHeader>
-            <form onSubmit={handleCreate}><FormFields />
+            <form onSubmit={handleCreate}>
+              {formFields()}
               <div className="flex justify-end gap-2 pt-4">
                 <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
                 <Button type="submit" disabled={saving}>{saving ? "Salvando…" : "Criar"}</Button>
@@ -123,7 +124,8 @@ export default function UsersPage() {
       <Dialog open={!!editUser} onOpenChange={o => !o && setEditUser(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Editar usuário</DialogTitle></DialogHeader>
-          <form onSubmit={handleEdit}><FormFields isEdit />
+          <form onSubmit={handleEdit}>
+            {formFields(true)}
             <div className="flex justify-end gap-2 pt-4">
               <Button type="button" variant="outline" onClick={() => setEditUser(null)}>Cancelar</Button>
               <Button type="submit" disabled={saving}>{saving ? "Salvando…" : "Salvar"}</Button>

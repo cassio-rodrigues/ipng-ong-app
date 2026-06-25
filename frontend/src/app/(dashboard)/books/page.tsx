@@ -49,13 +49,12 @@ export default function BooksPage() {
 
   async function handleDelete(b: Book) {
     if (!confirm(`Desativar livro "${b.title}"?`)) return
-    await booksApi.update(b.id, { active: false })
-    await load()
+    await booksApi.update(b.id, { active: false }); await load()
   }
 
   const F = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
 
-  const FormFields = () => (
+  const formFields = () => (
     <div className="space-y-4 mt-2">
       <div className="space-y-1.5">
         <Label>Título</Label>
@@ -84,7 +83,8 @@ export default function BooksPage() {
           <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Novo livro</Button></DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Novo livro</DialogTitle></DialogHeader>
-            <form onSubmit={handleCreate}><FormFields />
+            <form onSubmit={handleCreate}>
+              {formFields()}
               <div className="flex justify-end gap-2 pt-4">
                 <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
                 <Button type="submit" disabled={saving}>{saving ? "Salvando…" : "Criar"}</Button>
@@ -97,7 +97,8 @@ export default function BooksPage() {
       <Dialog open={!!editBook} onOpenChange={o => !o && setEditBook(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Editar livro</DialogTitle></DialogHeader>
-          <form onSubmit={handleEdit}><FormFields />
+          <form onSubmit={handleEdit}>
+            {formFields()}
             <div className="flex justify-end gap-2 pt-4">
               <Button type="button" variant="outline" onClick={() => setEditBook(null)}>Cancelar</Button>
               <Button type="submit" disabled={saving}>{saving ? "Salvando…" : "Salvar"}</Button>

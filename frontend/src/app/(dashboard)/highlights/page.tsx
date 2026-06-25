@@ -60,45 +60,6 @@ export default function HighlightsPage() {
   const classMap = Object.fromEntries(classes.map(c => [c.id, c.name]))
   const studentMap = Object.fromEntries(students.map(s => [s.id, s.full_name]))
 
-  const FormFields = ({ isEdit }: { isEdit?: boolean }) => (
-    <div className="space-y-4 mt-2">
-      {!isEdit && (
-        <div className="space-y-1.5">
-          <Label>Aluno</Label>
-          <Select value={form.student_id} onValueChange={v => F("student_id", v)}>
-            <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
-            <SelectContent>{students.map(s => <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
-      )}
-      {!isEdit && (
-        <div className="space-y-1.5">
-          <Label>Turma (opcional)</Label>
-          <Select value={form.class_id} onValueChange={v => F("class_id", v)}>
-            <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">—</SelectItem>
-              {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-      <div className="space-y-1.5"><Label>Título</Label><Input value={form.title} onChange={e => F("title", e.target.value)} required /></div>
-      <div className="space-y-1.5">
-        <Label>Tipo</Label>
-        <Select value={form.highlight_type} onValueChange={v => F("highlight_type", v)}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="performance">Desempenho</SelectItem>
-            <SelectItem value="behavior">Comportamento</SelectItem>
-            <SelectItem value="evolution">Evolução</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-1.5"><Label>Descrição</Label><Input value={form.description} onChange={e => F("description", e.target.value)} /></div>
-    </div>
-  )
-
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -107,7 +68,39 @@ export default function HighlightsPage() {
           <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Novo destaque</Button></DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Registrar destaque</DialogTitle></DialogHeader>
-            <form onSubmit={handleCreate}><FormFields />
+            <form onSubmit={handleCreate}>
+              <div className="space-y-4 mt-2">
+                <div className="space-y-1.5">
+                  <Label>Aluno</Label>
+                  <Select value={form.student_id} onValueChange={v => F("student_id", v)}>
+                    <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                    <SelectContent>{students.map(s => <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Turma (opcional)</Label>
+                  <Select value={form.class_id} onValueChange={v => F("class_id", v)}>
+                    <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">—</SelectItem>
+                      {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5"><Label>Título</Label><Input value={form.title} onChange={e => F("title", e.target.value)} required /></div>
+                <div className="space-y-1.5">
+                  <Label>Tipo</Label>
+                  <Select value={form.highlight_type} onValueChange={v => F("highlight_type", v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="performance">Desempenho</SelectItem>
+                      <SelectItem value="behavior">Comportamento</SelectItem>
+                      <SelectItem value="evolution">Evolução</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5"><Label>Descrição</Label><Input value={form.description} onChange={e => F("description", e.target.value)} /></div>
+              </div>
               <div className="flex justify-end gap-2 pt-4">
                 <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
                 <Button type="submit" disabled={saving || !form.student_id}>{saving ? "Salvando…" : "Registrar"}</Button>
@@ -120,7 +113,22 @@ export default function HighlightsPage() {
       <Dialog open={!!editHighlight} onOpenChange={o => !o && setEditHighlight(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Editar destaque</DialogTitle></DialogHeader>
-          <form onSubmit={handleEdit}><FormFields isEdit />
+          <form onSubmit={handleEdit}>
+            <div className="space-y-4 mt-2">
+              <div className="space-y-1.5"><Label>Título</Label><Input value={form.title} onChange={e => F("title", e.target.value)} required /></div>
+              <div className="space-y-1.5">
+                <Label>Tipo</Label>
+                <Select value={form.highlight_type} onValueChange={v => F("highlight_type", v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="performance">Desempenho</SelectItem>
+                    <SelectItem value="behavior">Comportamento</SelectItem>
+                    <SelectItem value="evolution">Evolução</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5"><Label>Descrição</Label><Input value={form.description} onChange={e => F("description", e.target.value)} /></div>
+            </div>
             <div className="flex justify-end gap-2 pt-4">
               <Button type="button" variant="outline" onClick={() => setEditHighlight(null)}>Cancelar</Button>
               <Button type="submit" disabled={saving}>{saving ? "Salvando…" : "Salvar"}</Button>
