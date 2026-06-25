@@ -161,3 +161,8 @@ export const auditApi = {
   list: (params?: { skip?: number; limit?: number; entity_type?: string; user_id?: string }) =>
     api.get("/audit/logs", { params }),
 }
+
+// Stats
+export const statsApi = {
+  dashboard: () => api.get("/stats/dashboard"),
+}

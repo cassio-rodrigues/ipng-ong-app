@@ -12,6 +12,7 @@ from app.domains.assessments.router import router as assessments_router
 from app.domains.activities.router import router as activities_router
 from app.domains.calendar.router import router as calendar_router
 from app.domains.audit.router import router as audit_router
+from app.domains.stats.router import router as stats_router
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -27,3 +28,4 @@ api_router.include_router(assessments_router)
 api_router.include_router(activities_router)
 api_router.include_router(calendar_router)
 api_router.include_router(audit_router)
+api_router.include_router(stats_router)
