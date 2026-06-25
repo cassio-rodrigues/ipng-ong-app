@@ -1,4 +1,5 @@
 import axios from "axios"
+import { toast } from "sonner"
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
 
@@ -18,12 +19,37 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (error) => {
-    if (error.response?.status === 401 && typeof window !== "undefined") {
+    const status = error.response?.status
+
+    if (status === 401 && typeof window !== "undefined") {
       localStorage.removeItem("access_token")
       localStorage.removeItem("refresh_token")
       localStorage.removeItem("user")
       window.location.href = "/login"
+      return Promise.reject(error)
     }
+
+    if (typeof window !== "undefined") {
+      const detail = error.response?.data?.detail
+      let message: string
+      if (typeof detail === "string") {
+        message = detail
+      } else if (Array.isArray(detail)) {
+        message = detail.map((d: { msg?: string }) => d.msg ?? "").join(", ")
+      } else if (!error.response) {
+        message = "Não foi possível conectar ao servidor"
+      } else {
+        const STATUS_MSG: Record<number, string> = {
+          403: "Sem permissão para realizar esta ação",
+          404: "Registro não encontrado",
+          422: "Dados inválidos",
+          500: "Erro interno do servidor",
+        }
+        message = STATUS_MSG[status] ?? `Erro ${status}`
+      }
+      toast.error(message)
+    }
+
     return Promise.reject(error)
   }
 )
