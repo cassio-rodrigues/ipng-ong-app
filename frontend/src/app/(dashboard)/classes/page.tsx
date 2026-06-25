@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Pencil, Plus, Trash2 } from "lucide-react"
 
 const LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"]
-const EMPTY = { name: "", level: "", unit_id: "", main_teacher_id: "", book_id: "" }
+const EMPTY = { name: "", level: "", unit_id: "", main_teacher_id: "", book_id: "", start_date: "", end_date: "" }
 
 export default function ClassesPage() {
   const [classes, setClasses] = useState<Class_[]>([])
@@ -41,13 +41,13 @@ export default function ClassesPage() {
 
   function openEdit(c: Class_) {
     setEditClass(c)
-    setForm({ name: c.name ?? "", level: c.level ?? "", unit_id: c.unit_id ?? "", main_teacher_id: c.main_teacher_id ?? "", book_id: c.book_id ?? "" })
+    setForm({ name: c.name ?? "", level: c.level ?? "", unit_id: c.unit_id ?? "", main_teacher_id: c.main_teacher_id ?? "", book_id: c.book_id ?? "", start_date: c.start_date ? c.start_date.slice(0, 10) : "", end_date: c.end_date ? c.end_date.slice(0, 10) : "" })
   }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault(); setSaving(true)
     try {
-      await classesApi.create({ name: form.name, level: form.level || undefined, unit_id: form.unit_id || undefined, main_teacher_id: form.main_teacher_id || undefined, book_id: form.book_id || undefined })
+      await classesApi.create({ name: form.name, level: form.level || undefined, unit_id: form.unit_id || undefined, main_teacher_id: form.main_teacher_id || undefined, book_id: form.book_id || undefined, start_date: form.start_date || undefined, end_date: form.end_date || undefined })
       setCreateOpen(false); setForm({ ...EMPTY }); await load()
     } finally { setSaving(false) }
   }
@@ -55,7 +55,7 @@ export default function ClassesPage() {
   async function handleEdit(e: React.FormEvent) {
     e.preventDefault(); if (!editClass) return; setSaving(true)
     try {
-      await classesApi.update(editClass.id, { name: form.name, level: form.level || undefined, unit_id: form.unit_id || undefined, main_teacher_id: form.main_teacher_id || undefined, book_id: form.book_id || undefined })
+      await classesApi.update(editClass.id, { name: form.name, level: form.level || undefined, unit_id: form.unit_id || undefined, main_teacher_id: form.main_teacher_id || undefined, book_id: form.book_id || undefined, start_date: form.start_date || undefined, end_date: form.end_date || undefined })
       setEditClass(null); await load()
     } finally { setSaving(false) }
   }
@@ -96,11 +96,15 @@ export default function ClassesPage() {
         </Select>
       </div>
       <div className="space-y-1.5">
-        <Label>Livro</Label>
+        <Label>Livro base</Label>
         <Select value={form.book_id} onValueChange={v => F("book_id", v)}>
           <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
           <SelectContent>{books.map(b => <SelectItem key={b.id} value={b.id}>{b.title}</SelectItem>)}</SelectContent>
         </Select>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1.5"><Label>Início</Label><Input type="date" value={form.start_date} onChange={e => F("start_date", e.target.value)} /></div>
+        <div className="space-y-1.5"><Label>Fim</Label><Input type="date" value={form.end_date} onChange={e => F("end_date", e.target.value)} /></div>
       </div>
     </div>
   )
@@ -111,7 +115,7 @@ export default function ClassesPage() {
         <h1 className="text-2xl font-bold">Turmas</h1>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Nova turma</Button></DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle>Nova turma</DialogTitle></DialogHeader>
             <form onSubmit={handleCreate}><FormFields />
               <div className="flex justify-end gap-2 pt-4">
@@ -124,7 +128,7 @@ export default function ClassesPage() {
       </div>
 
       <Dialog open={!!editClass} onOpenChange={o => !o && setEditClass(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Editar turma</DialogTitle></DialogHeader>
           <form onSubmit={handleEdit}><FormFields />
             <div className="flex justify-end gap-2 pt-4">
@@ -138,7 +142,7 @@ export default function ClassesPage() {
       {loading ? <p className="text-muted-foreground text-sm">Carregando…</p> : (
         <div className="rounded-md border bg-card">
           <Table>
-            <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Nível</TableHead><TableHead>Unidade</TableHead><TableHead>Professor</TableHead><TableHead>Status</TableHead><TableHead className="w-20" /></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Nível</TableHead><TableHead>Unidade</TableHead><TableHead>Professor</TableHead><TableHead>Período</TableHead><TableHead>Status</TableHead><TableHead className="w-20" /></TableRow></TableHeader>
             <TableBody>
               {classes.map(c => (
                 <TableRow key={c.id}>
@@ -146,6 +150,10 @@ export default function ClassesPage() {
                   <TableCell>{c.level ? <Badge variant="outline">{c.level}</Badge> : "—"}</TableCell>
                   <TableCell>{c.unit_id ? unitMap[c.unit_id] ?? "—" : "—"}</TableCell>
                   <TableCell>{c.main_teacher_id ? teacherMap[c.main_teacher_id] ?? "—" : "—"}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {c.start_date ? new Date(c.start_date).toLocaleDateString("pt-BR") : "—"}
+                    {c.end_date ? ` – ${new Date(c.end_date).toLocaleDateString("pt-BR")}` : ""}
+                  </TableCell>
                   <TableCell><Badge variant={c.status === "active" ? "default" : "secondary"}>{c.status === "active" ? "Ativa" : "Inativa"}</Badge></TableCell>
                   <TableCell><div className="flex gap-1">
                     <Button variant="ghost" size="icon" onClick={() => openEdit(c)}><Pencil className="size-4" /></Button>
@@ -153,7 +161,7 @@ export default function ClassesPage() {
                   </div></TableCell>
                 </TableRow>
               ))}
-              {classes.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhuma turma cadastrada</TableCell></TableRow>}
+              {classes.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhuma turma cadastrada</TableCell></TableRow>}
             </TableBody>
           </Table>
         </div>

@@ -12,6 +12,9 @@ import {
   CalendarDays,
   ClipboardList,
   Star,
+  Zap,
+  Trophy,
+  ScrollText,
   LogOut,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -27,7 +30,10 @@ const navItems = [
   { href: "/students", label: "Alunos", icon: UserCheck },
   { href: "/lessons", label: "Aulas", icon: ClipboardList },
   { href: "/assessments", label: "Avaliações", icon: Star },
+  { href: "/activities", label: "Atividades", icon: Zap },
+  { href: "/highlights", label: "Destaques", icon: Trophy },
   { href: "/calendar", label: "Calendário", icon: CalendarDays },
+  { href: "/audit", label: "Auditoria", icon: ScrollText },
 ]
 
 export function Sidebar() {
@@ -41,7 +47,7 @@ export function Sidebar() {
         <p className="text-xs text-muted-foreground mt-0.5">Gestão Educacional</p>
       </div>
 
-      <nav className="flex-1 px-3 py-4 space-y-0.5">
+      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         {navItems.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href))
           return (

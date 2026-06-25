@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { lessonsApi, classesApi } from "@/lib/api"
 import type { Lesson, Class_ } from "@/types"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -10,7 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Pencil, Plus, Trash2 } from "lucide-react"
+import { ExternalLink, Pencil, Plus, Trash2 } from "lucide-react"
 
 const STATUS_LABEL: Record<string, string> = { scheduled: "Agendada", completed: "Concluída", cancelled: "Cancelada" }
 const EMPTY = { class_id: "", scheduled_at: "" }
@@ -140,7 +141,7 @@ export default function LessonsPage() {
       {loading ? <p className="text-muted-foreground text-sm">Carregando…</p> : (
         <div className="rounded-md border bg-card">
           <Table>
-            <TableHeader><TableRow><TableHead>Turma</TableHead><TableHead>Data agendada</TableHead><TableHead>Status</TableHead><TableHead>Relatório</TableHead><TableHead className="w-20" /></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>Turma</TableHead><TableHead>Data agendada</TableHead><TableHead>Status</TableHead><TableHead>Relatório</TableHead><TableHead className="w-28" /></TableRow></TableHeader>
             <TableBody>
               {lessons.map(l => (
                 <TableRow key={l.id}>
@@ -153,6 +154,9 @@ export default function LessonsPage() {
                   </TableCell>
                   <TableCell>{l.report ? <Badge variant="outline">Preenchido</Badge> : <span className="text-muted-foreground text-xs">—</span>}</TableCell>
                   <TableCell><div className="flex gap-1">
+                    <Button variant="ghost" size="icon" title="Ver detalhes" asChild>
+                      <Link href={`/lessons/${l.id}`}><ExternalLink className="size-4" /></Link>
+                    </Button>
                     <Button variant="ghost" size="icon" onClick={() => openEdit(l)}><Pencil className="size-4" /></Button>
                     <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(l)}><Trash2 className="size-4" /></Button>
                   </div></TableCell>

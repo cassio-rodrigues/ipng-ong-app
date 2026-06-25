@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Pencil, Plus, Trash2 } from "lucide-react"
 
 const ROLE_LABEL: Record<string, string> = { admin: "Admin", coordinator: "Coordenador", teacher: "Professor" }
-const EMPTY = { name: "", email: "", password: "", role: "teacher", telefone: "" }
+const EMPTY = { name: "", email: "", password: "", role: "teacher", telefone: "", gender: "", birth_date: "" }
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([])
@@ -32,19 +32,21 @@ export default function UsersPage() {
 
   function openEdit(u: User) {
     setEditUser(u)
-    setForm({ name: u.name ?? "", email: u.email ?? "", password: "", role: u.role ?? "teacher", telefone: u.telefone ?? "" })
+    setForm({ name: u.name ?? "", email: u.email ?? "", password: "", role: u.role ?? "teacher", telefone: u.telefone ?? "", gender: u.gender ?? "", birth_date: u.birth_date ? u.birth_date.slice(0, 10) : "" })
   }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault(); setSaving(true)
-    try { await usersApi.create(form); setCreateOpen(false); setForm({ ...EMPTY }); await load() }
-    finally { setSaving(false) }
+    try {
+      await usersApi.create({ ...form, birth_date: form.birth_date || undefined, gender: form.gender || undefined })
+      setCreateOpen(false); setForm({ ...EMPTY }); await load()
+    } finally { setSaving(false) }
   }
 
   async function handleEdit(e: React.FormEvent) {
     e.preventDefault(); if (!editUser) return; setSaving(true)
     try {
-      const payload: Record<string, string> = { name: form.name, email: form.email, role: form.role, telefone: form.telefone }
+      const payload: Record<string, unknown> = { name: form.name, email: form.email, role: form.role, telefone: form.telefone, gender: form.gender || undefined, birth_date: form.birth_date || undefined }
       if (form.password) payload.password = form.password
       await usersApi.update(editUser.id, payload)
       setEditUser(null); await load()
@@ -69,6 +71,23 @@ export default function UsersPage() {
         <Label>{isEdit ? "Nova senha (deixe vazio para manter)" : "Senha"}</Label>
         <Input type="password" value={form.password} onChange={e => F("password", e.target.value)} required={!isEdit} />
       </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label>Data de nascimento</Label>
+          <Input type="date" value={form.birth_date} onChange={e => F("birth_date", e.target.value)} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Gênero</Label>
+          <Select value={form.gender} onValueChange={v => F("gender", v)}>
+            <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="M">Masculino</SelectItem>
+              <SelectItem value="F">Feminino</SelectItem>
+              <SelectItem value="O">Outro</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
       <div className="space-y-1.5">
         <Label>Perfil</Label>
         <Select value={form.role} onValueChange={v => F("role", v)}>
@@ -89,7 +108,7 @@ export default function UsersPage() {
         <h1 className="text-2xl font-bold">Usuários</h1>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Novo usuário</Button></DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle>Novo usuário</DialogTitle></DialogHeader>
             <form onSubmit={handleCreate}><FormFields />
               <div className="flex justify-end gap-2 pt-4">
@@ -102,7 +121,7 @@ export default function UsersPage() {
       </div>
 
       <Dialog open={!!editUser} onOpenChange={o => !o && setEditUser(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Editar usuário</DialogTitle></DialogHeader>
           <form onSubmit={handleEdit}><FormFields isEdit />
             <div className="flex justify-end gap-2 pt-4">

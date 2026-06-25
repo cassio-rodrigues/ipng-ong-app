@@ -66,6 +66,8 @@ export const booksApi = {
   update: (id: string, data: object) => api.patch(`/books/${id}`, data),
   addChapter: (id: string, data: object) =>
     api.post(`/books/${id}/chapters`, data),
+  updateChapter: (bookId: string, chapterId: string, data: object) =>
+    api.patch(`/books/${bookId}/chapters/${chapterId}`, data),
 }
 
 // Classes
@@ -141,6 +143,9 @@ export const activitiesApi = {
     api.get("/activities", { params }),
   create: (data: object) => api.post("/activities", data),
   get: (id: string) => api.get(`/activities/${id}`),
+  update: (id: string, data: object) => api.patch(`/activities/${id}`, data),
+  postResponses: (id: string, responses: object[]) =>
+    api.post(`/activities/${id}/student-responses`, { responses }),
 }
 
 // Highlights
@@ -148,4 +153,11 @@ export const highlightsApi = {
   list: (params?: { student_id?: string; class_id?: string }) =>
     api.get("/highlights", { params }),
   create: (data: object) => api.post("/highlights", data),
+  update: (id: string, data: object) => api.patch(`/highlights/${id}`, data),
+}
+
+// Audit
+export const auditApi = {
+  list: (params?: { skip?: number; limit?: number; entity_type?: string; user_id?: string }) =>
+    api.get("/audit/logs", { params }),
 }

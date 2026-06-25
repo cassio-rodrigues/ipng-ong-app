@@ -3,14 +3,21 @@
 import { useEffect, useState } from "react"
 import { assessmentsApi, classesApi } from "@/lib/api"
 import type { Assessment, Class_ } from "@/types"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Pencil, Plus } from "lucide-react"
+import { ExternalLink, Pencil, Plus } from "lucide-react"
 
+const TYPE_OPTS = [
+  { value: "written", label: "Escrita" },
+  { value: "oral", label: "Oral" },
+  { value: "quiz", label: "Quiz" },
+  { value: "final", label: "Exame Final" },
+]
 const EMPTY = { title: "", class_id: "", type: "", semester: "", max_score: "10", date: "" }
 
 export default function AssessmentsPage() {
@@ -70,11 +77,7 @@ export default function AssessmentsPage() {
           <Label>Tipo</Label>
           <Select value={form.type} onValueChange={v => F("type", v)}>
             <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="written">Escrita</SelectItem>
-              <SelectItem value="oral">Oral</SelectItem>
-              <SelectItem value="final">Final</SelectItem>
-            </SelectContent>
+            <SelectContent>{TYPE_OPTS.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
           </Select>
         </div>
         <div className="space-y-1.5">
@@ -138,7 +141,7 @@ export default function AssessmentsPage() {
       {loading ? <p className="text-muted-foreground text-sm">Carregando…</p> : (
         <div className="rounded-md border bg-card">
           <Table>
-            <TableHeader><TableRow><TableHead>Título</TableHead><TableHead>Turma</TableHead><TableHead>Tipo</TableHead><TableHead>Semestre</TableHead><TableHead>Nota max.</TableHead><TableHead>Notas</TableHead><TableHead className="w-12" /></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>Título</TableHead><TableHead>Turma</TableHead><TableHead>Tipo</TableHead><TableHead>Semestre</TableHead><TableHead>Nota max.</TableHead><TableHead>Notas</TableHead><TableHead className="w-24" /></TableRow></TableHeader>
             <TableBody>
               {assessments.map(a => (
                 <TableRow key={a.id}>
@@ -148,9 +151,12 @@ export default function AssessmentsPage() {
                   <TableCell>{a.semester ?? "—"}</TableCell>
                   <TableCell>{a.max_score ?? "—"}</TableCell>
                   <TableCell>{a.grades?.length ?? 0}</TableCell>
-                  <TableCell>
+                  <TableCell><div className="flex gap-1">
+                    <Button variant="ghost" size="icon" title="Lançar notas" asChild>
+                      <Link href={`/assessments/${a.id}`}><ExternalLink className="size-4" /></Link>
+                    </Button>
                     <Button variant="ghost" size="icon" onClick={() => openEdit(a)}><Pencil className="size-4" /></Button>
-                  </TableCell>
+                  </div></TableCell>
                 </TableRow>
               ))}
               {assessments.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhuma avaliação encontrada</TableCell></TableRow>}
