@@ -10,93 +10,83 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Trash2 } from "lucide-react"
+import { Pencil, Plus, Trash2 } from "lucide-react"
 
-const EVENT_TYPES: Record<string, string> = {
-  holiday: "Feriado",
-  institutional: "Institucional",
-  class_event: "Evento de turma",
-}
+const EVENT_TYPES: Record<string, string> = { holiday: "Feriado", institutional: "Institucional", class_event: "Evento de turma" }
+const EMPTY = { title: "", event_type: "institutional", start_date: "", end_date: "", description: "" }
 
 export default function CalendarPage() {
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [loading, setLoading] = useState(true)
-  const [open, setOpen] = useState(false)
-  const [form, setForm] = useState({ title: "", event_type: "institutional", start_date: "", end_date: "", description: "" })
+  const [createOpen, setCreateOpen] = useState(false)
+  const [editEvent, setEditEvent] = useState<CalendarEvent | null>(null)
+  const [form, setForm] = useState({ ...EMPTY })
   const [saving, setSaving] = useState(false)
 
   async function load() {
-    try {
-      const { data } = await calendarApi.list()
-      setEvents(data)
-    } finally {
-      setLoading(false)
-    }
+    try { const { data } = await calendarApi.list(); setEvents(data) }
+    finally { setLoading(false) }
   }
 
   useEffect(() => { load() }, [])
 
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault()
-    setSaving(true)
-    try {
-      await calendarApi.create(form)
-      setOpen(false)
-      setForm({ title: "", event_type: "institutional", start_date: "", end_date: "", description: "" })
-      await load()
-    } finally {
-      setSaving(false)
-    }
+  function openEdit(ev: CalendarEvent) {
+    setEditEvent(ev)
+    setForm({ title: ev.title ?? "", event_type: ev.event_type ?? "institutional", start_date: ev.start_date ? ev.start_date.slice(0, 16) : "", end_date: ev.end_date ? ev.end_date.slice(0, 16) : "", description: ev.description ?? "" })
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("Remover este evento?")) return
-    await calendarApi.delete(id)
-    await load()
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault(); setSaving(true)
+    try { await calendarApi.create(form); setCreateOpen(false); setForm({ ...EMPTY }); await load() }
+    finally { setSaving(false) }
   }
+
+  async function handleEdit(e: React.FormEvent) {
+    e.preventDefault(); if (!editEvent) return; setSaving(true)
+    try { await calendarApi.update(editEvent.id, form); setEditEvent(null); await load() }
+    finally { setSaving(false) }
+  }
+
+  async function handleDelete(ev: CalendarEvent) {
+    if (!confirm(`Remover "${ev.title}"?`)) return
+    await calendarApi.delete(ev.id); await load()
+  }
+
+  const F = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
+
+  const FormFields = () => (
+    <div className="space-y-4 mt-2">
+      <div className="space-y-1.5"><Label>Título</Label><Input value={form.title} onChange={e => F("title", e.target.value)} required /></div>
+      <div className="space-y-1.5">
+        <Label>Tipo</Label>
+        <Select value={form.event_type} onValueChange={v => F("event_type", v)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="holiday">Feriado</SelectItem>
+            <SelectItem value="institutional">Institucional</SelectItem>
+            <SelectItem value="class_event">Evento de turma</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1.5"><Label>Início</Label><Input type="datetime-local" value={form.start_date} onChange={e => F("start_date", e.target.value)} required /></div>
+        <div className="space-y-1.5"><Label>Fim</Label><Input type="datetime-local" value={form.end_date} onChange={e => F("end_date", e.target.value)} /></div>
+      </div>
+      <div className="space-y-1.5"><Label>Descrição</Label><Input value={form.description} onChange={e => F("description", e.target.value)} /></div>
+    </div>
+  )
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Calendário Institucional</h1>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm"><Plus className="size-4 mr-2" />Novo evento</Button>
-          </DialogTrigger>
+        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+          <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Novo evento</Button></DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Novo evento</DialogTitle></DialogHeader>
-            <form onSubmit={handleCreate} className="space-y-4 mt-2">
-              <div className="space-y-1.5">
-                <Label>Título</Label>
-                <Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} required />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Tipo</Label>
-                <Select value={form.event_type} onValueChange={v => setForm(f => ({ ...f, event_type: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="holiday">Feriado</SelectItem>
-                    <SelectItem value="institutional">Institucional</SelectItem>
-                    <SelectItem value="class_event">Evento de turma</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label>Início</Label>
-                  <Input type="datetime-local" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} required />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Fim</Label>
-                  <Input type="datetime-local" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} />
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Descrição</Label>
-                <Input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+            <form onSubmit={handleCreate}><FormFields />
+              <div className="flex justify-end gap-2 pt-4">
+                <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
                 <Button type="submit" disabled={saving}>{saving ? "Salvando…" : "Criar"}</Button>
               </div>
             </form>
@@ -104,39 +94,36 @@ export default function CalendarPage() {
         </Dialog>
       </div>
 
-      {loading ? (
-        <p className="text-muted-foreground text-sm">Carregando…</p>
-      ) : (
+      <Dialog open={!!editEvent} onOpenChange={o => !o && setEditEvent(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Editar evento</DialogTitle></DialogHeader>
+          <form onSubmit={handleEdit}><FormFields />
+            <div className="flex justify-end gap-2 pt-4">
+              <Button type="button" variant="outline" onClick={() => setEditEvent(null)}>Cancelar</Button>
+              <Button type="submit" disabled={saving}>{saving ? "Salvando…" : "Salvar"}</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {loading ? <p className="text-muted-foreground text-sm">Carregando…</p> : (
         <div className="rounded-md border bg-card">
           <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Título</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Início</TableHead>
-                <TableHead>Fim</TableHead>
-                <TableHead className="w-12" />
-              </TableRow>
-            </TableHeader>
+            <TableHeader><TableRow><TableHead>Título</TableHead><TableHead>Tipo</TableHead><TableHead>Início</TableHead><TableHead>Fim</TableHead><TableHead className="w-20" /></TableRow></TableHeader>
             <TableBody>
               {events.map(ev => (
                 <TableRow key={ev.id}>
                   <TableCell className="font-medium">{ev.title ?? "—"}</TableCell>
-                  <TableCell>
-                    {ev.event_type ? <Badge variant="outline">{EVENT_TYPES[ev.event_type] ?? ev.event_type}</Badge> : "—"}
-                  </TableCell>
+                  <TableCell>{ev.event_type ? <Badge variant="outline">{EVENT_TYPES[ev.event_type] ?? ev.event_type}</Badge> : "—"}</TableCell>
                   <TableCell>{ev.start_date ? new Date(ev.start_date).toLocaleString("pt-BR") : "—"}</TableCell>
                   <TableCell>{ev.end_date ? new Date(ev.end_date).toLocaleString("pt-BR") : "—"}</TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(ev.id)}>
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </TableCell>
+                  <TableCell><div className="flex gap-1">
+                    <Button variant="ghost" size="icon" onClick={() => openEdit(ev)}><Pencil className="size-4" /></Button>
+                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(ev)}><Trash2 className="size-4" /></Button>
+                  </div></TableCell>
                 </TableRow>
               ))}
-              {events.length === 0 && (
-                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhum evento cadastrado</TableCell></TableRow>
-              )}
+              {events.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhum evento cadastrado</TableCell></TableRow>}
             </TableBody>
           </Table>
         </div>
