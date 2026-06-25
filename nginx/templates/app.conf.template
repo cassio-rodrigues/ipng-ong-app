@@ -1,11 +1,7 @@
-# HTTP — redireciona tudo para HTTPS, exceto o desafio do Certbot
+# HTTP — redireciona tudo para HTTPS
 server {
     listen 80;
     server_name ${DOMAIN} www.${DOMAIN} api.${DOMAIN};
-
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-    }
 
     location / {
         return 301 https://$host$request_uri;
