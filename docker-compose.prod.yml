@@ -20,8 +20,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    ports:
-      - "8000:8000"
     env_file:
       - .env
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2
@@ -35,10 +33,33 @@ services:
     restart: always
     depends_on:
       - backend
-    ports:
-      - "3000:3000"
     environment:
       HOSTNAME: "0.0.0.0"
+
+  nginx:
+    image: nginx:alpine
+    restart: always
+    depends_on:
+      - frontend
+      - backend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/templates:/etc/nginx/templates:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    environment:
+      DOMAIN: ${DOMAIN}
+      NGINX_ENVSUBST_OUTPUT_DIR: /etc/nginx/conf.d
+
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    # renovação automática a cada 12h
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --quiet; sleep 12h & wait $${!}; done;'"
 
 volumes:
   pgdata:
