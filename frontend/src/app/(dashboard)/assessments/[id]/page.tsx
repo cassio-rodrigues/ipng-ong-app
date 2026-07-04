@@ -9,12 +9,14 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ArrowLeft, Save } from "lucide-react"
+import { useAuth } from "@/hooks/use-auth"
 
 interface GradeRow { student_id: string; student_name: string; score: string; feedback: string }
 
 export default function AssessmentGradesPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
+  const { canEdit } = useAuth()
 
   const [assessment, setAssessment] = useState<Assessment | null>(null)
   const [rows, setRows] = useState<GradeRow[]>([])
@@ -99,10 +101,11 @@ export default function AssessmentGradesPage() {
                       value={r.score}
                       onChange={e => update(i, "score", e.target.value)}
                       placeholder="—"
+                      disabled={!canEdit}
                     />
                   </TableCell>
                   <TableCell>
-                    <Input className="h-7 text-xs" value={r.feedback} onChange={e => update(i, "feedback", e.target.value)} placeholder="Comentário" />
+                    <Input className="h-7 text-xs" value={r.feedback} onChange={e => update(i, "feedback", e.target.value)} placeholder="Comentário" disabled={!canEdit} />
                   </TableCell>
                   <TableCell className="text-right">
                     {score !== null
@@ -117,7 +120,7 @@ export default function AssessmentGradesPage() {
         </Table>
       </div>
 
-      {rows.length > 0 && (
+      {rows.length > 0 && canEdit && (
         <Button onClick={saveGrades} disabled={saving}>
           <Save className="size-4 mr-2" />{saving ? "Salvando…" : "Salvar notas"}
         </Button>

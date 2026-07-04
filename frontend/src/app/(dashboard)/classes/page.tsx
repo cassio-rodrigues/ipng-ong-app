@@ -11,11 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Pencil, Plus, Trash2 } from "lucide-react"
+import { useAuth } from "@/hooks/use-auth"
 
 const LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"]
 const EMPTY = { name: "", level: "", unit_id: "", main_teacher_id: "", book_id: "", start_date: "", end_date: "" }
 
 export default function ClassesPage() {
+  const { canEdit } = useAuth()
   const [classes, setClasses] = useState<Class_[]>([])
   const [units, setUnits] = useState<Unit[]>([])
   const [teachers, setTeachers] = useState<User[]>([])
@@ -114,7 +116,7 @@ export default function ClassesPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Turmas</h1>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Nova turma</Button></DialogTrigger>
+          {canEdit && <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Nova turma</Button></DialogTrigger>}
           <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle>Nova turma</DialogTitle></DialogHeader>
             <form onSubmit={handleCreate}>
@@ -157,10 +159,10 @@ export default function ClassesPage() {
                     {c.end_date ? ` – ${new Date(c.end_date).toLocaleDateString("pt-BR")}` : ""}
                   </TableCell>
                   <TableCell><Badge variant={c.status === "active" ? "default" : "secondary"}>{c.status === "active" ? "Ativa" : "Inativa"}</Badge></TableCell>
-                  <TableCell><div className="flex gap-1">
+                  <TableCell>{canEdit && <div className="flex gap-1">
                     <Button variant="ghost" size="icon" onClick={() => openEdit(c)}><Pencil className="size-4" /></Button>
                     <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(c)}><Trash2 className="size-4" /></Button>
-                  </div></TableCell>
+                  </div>}</TableCell>
                 </TableRow>
               ))}
               {classes.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhuma turma cadastrada</TableCell></TableRow>}

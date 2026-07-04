@@ -11,10 +11,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Pencil, Plus, Trash2 } from "lucide-react"
+import { useAuth } from "@/hooks/use-auth"
 
 const EMPTY = { name: "", address: "", coordinator_id: "" }
 
 export default function UnitsPage() {
+  const { canEdit } = useAuth()
   const [units, setUnits] = useState<Unit[]>([])
   const [coordinators, setCoordinators] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
@@ -80,7 +82,7 @@ export default function UnitsPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Unidades</h1>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Nova unidade</Button></DialogTrigger>
+          {canEdit && <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Nova unidade</Button></DialogTrigger>}
           <DialogContent>
             <DialogHeader><DialogTitle>Nova unidade</DialogTitle></DialogHeader>
             <form onSubmit={handleCreate}>
@@ -118,10 +120,10 @@ export default function UnitsPage() {
                   <TableCell>{u.address ?? "—"}</TableCell>
                   <TableCell>{u.coordinator_id ? coordMap[u.coordinator_id] ?? "—" : "—"}</TableCell>
                   <TableCell><Badge variant={u.status === "active" ? "default" : "secondary"}>{u.status === "active" ? "Ativa" : "Inativa"}</Badge></TableCell>
-                  <TableCell><div className="flex gap-1">
+                  <TableCell>{canEdit && <div className="flex gap-1">
                     <Button variant="ghost" size="icon" onClick={() => openEdit(u)}><Pencil className="size-4" /></Button>
                     <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(u)}><Trash2 className="size-4" /></Button>
-                  </div></TableCell>
+                  </div>}</TableCell>
                 </TableRow>
               ))}
               {units.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhuma unidade cadastrada</TableCell></TableRow>}

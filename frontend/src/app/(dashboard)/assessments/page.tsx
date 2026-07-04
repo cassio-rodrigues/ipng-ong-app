@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ExternalLink, Pencil, Plus } from "lucide-react"
+import { useAuth } from "@/hooks/use-auth"
 
 const TYPE_OPTS = [
   { value: "written", label: "Escrita" },
@@ -21,6 +22,7 @@ const TYPE_OPTS = [
 const EMPTY = { title: "", class_id: "", type: "", semester: "", max_score: "10", date: "" }
 
 export default function AssessmentsPage() {
+  const { canEdit } = useAuth()
   const [assessments, setAssessments] = useState<Assessment[]>([])
   const [classes, setClasses] = useState<Class_[]>([])
   const [loading, setLoading] = useState(true)
@@ -103,7 +105,7 @@ export default function AssessmentsPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Avaliações</h1>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Nova avaliação</Button></DialogTrigger>
+          {canEdit && <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Nova avaliação</Button></DialogTrigger>}
           <DialogContent>
             <DialogHeader><DialogTitle>Nova avaliação</DialogTitle></DialogHeader>
             <form onSubmit={handleCreate}>
@@ -154,10 +156,10 @@ export default function AssessmentsPage() {
                   <TableCell>{a.max_score ?? "—"}</TableCell>
                   <TableCell>{a.grades?.length ?? 0}</TableCell>
                   <TableCell><div className="flex gap-1">
-                    <Button variant="ghost" size="icon" title="Lançar notas" asChild>
+                    <Button variant="ghost" size="icon" title="Ver notas" asChild>
                       <Link href={`/assessments/${a.id}`}><ExternalLink className="size-4" /></Link>
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => openEdit(a)}><Pencil className="size-4" /></Button>
+                    {canEdit && <Button variant="ghost" size="icon" onClick={() => openEdit(a)}><Pencil className="size-4" /></Button>}
                   </div></TableCell>
                 </TableRow>
               ))}

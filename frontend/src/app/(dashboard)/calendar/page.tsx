@@ -11,12 +11,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Pencil, Plus, Trash2 } from "lucide-react"
+import { useAuth } from "@/hooks/use-auth"
 
 const EVENT_TYPES: Record<string, string> = { holiday: "Feriado", institutional: "Institucional", class_event: "Evento de turma" }
 const VISIBILITY_LABEL: Record<string, string> = { all: "Todos", teachers: "Professores", coordinators: "Coordenadores" }
 const EMPTY = { title: "", event_type: "institutional", start_date: "", end_date: "", description: "", visibility: "all", unit_id: "", is_all_day: "false" }
 
 export default function CalendarPage() {
+  const { canEdit } = useAuth()
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [units, setUnits] = useState<Unit[]>([])
   const [loading, setLoading] = useState(true)
@@ -110,7 +112,7 @@ export default function CalendarPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Calendário Institucional</h1>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Novo evento</Button></DialogTrigger>
+          {canEdit && <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Novo evento</Button></DialogTrigger>}
           <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle>Novo evento</DialogTitle></DialogHeader>
             <form onSubmit={handleCreate}>{formFields()}
@@ -147,10 +149,10 @@ export default function CalendarPage() {
                   <TableCell>{ev.visibility ? VISIBILITY_LABEL[ev.visibility] ?? ev.visibility : "—"}</TableCell>
                   <TableCell>{ev.start_date ? new Date(ev.start_date).toLocaleString("pt-BR") : "—"}</TableCell>
                   <TableCell>{ev.end_date ? new Date(ev.end_date).toLocaleString("pt-BR") : "—"}</TableCell>
-                  <TableCell><div className="flex gap-1">
+                  <TableCell>{canEdit && <div className="flex gap-1">
                     <Button variant="ghost" size="icon" onClick={() => openEdit(ev)}><Pencil className="size-4" /></Button>
                     <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(ev)}><Trash2 className="size-4" /></Button>
-                  </div></TableCell>
+                  </div>}</TableCell>
                 </TableRow>
               ))}
               {events.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhum evento cadastrado</TableCell></TableRow>}

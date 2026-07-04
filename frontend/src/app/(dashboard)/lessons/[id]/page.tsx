@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ArrowLeft, Save } from "lucide-react"
+import { useAuth } from "@/hooks/use-auth"
 
 const STATUS_LABEL: Record<string, string> = { present: "Presente", absent: "Ausente", late: "Atrasado", justified: "Justificado" }
 const ATTENDANCE_OPTS = ["present", "absent", "late", "justified"]
@@ -21,6 +22,7 @@ interface AttendanceRow { student_id: string; student_name: string; status: stri
 export default function LessonDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
+  const { canEdit } = useAuth()
 
   const [lesson, setLesson] = useState<Lesson | null>(null)
   const [students, setStudents] = useState<Student[]>([])
@@ -117,19 +119,19 @@ export default function LessonDetailPage() {
                   <TableRow key={r.student_id}>
                     <TableCell className="font-medium">{r.student_name}</TableCell>
                     <TableCell>
-                      <Select value={r.status} onValueChange={v => updateRow(i, "status", v)}>
+                      <Select value={r.status} onValueChange={v => canEdit && updateRow(i, "status", v)} disabled={!canEdit}>
                         <SelectTrigger className="h-7 w-36 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>{ATTENDANCE_OPTS.map(s => <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>)}</SelectContent>
                       </Select>
                     </TableCell>
-                    <TableCell><Input className="h-7 text-xs" value={r.notes} onChange={e => updateRow(i, "notes", e.target.value)} placeholder="Observação" /></TableCell>
+                    <TableCell><Input className="h-7 text-xs" value={r.notes} onChange={e => updateRow(i, "notes", e.target.value)} placeholder="Observação" disabled={!canEdit} /></TableCell>
                   </TableRow>
                 ))}
                 {attendance.length === 0 && <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-6">Nenhum aluno matriculado nesta turma</TableCell></TableRow>}
               </TableBody>
             </Table>
           </div>
-          {attendance.length > 0 && (
+          {attendance.length > 0 && canEdit && (
             <Button onClick={saveAttendance} disabled={saving}>
               <Save className="size-4 mr-2" />{saving ? "Salvando…" : "Salvar presença"}
             </Button>
@@ -138,16 +140,16 @@ export default function LessonDetailPage() {
 
         <TabsContent value="report">
           <form onSubmit={saveReport} className="space-y-4 max-w-2xl">
-            <div className="space-y-1.5"><Label>Resumo da aula</Label><Input value={reportForm.summary} onChange={e => setReportForm(f => ({ ...f, summary: e.target.value }))} placeholder="O que foi feito…" /></div>
-            <div className="space-y-1.5"><Label>Atividades realizadas</Label><Input value={reportForm.activities_done} onChange={e => setReportForm(f => ({ ...f, activities_done: e.target.value }))} /></div>
-            <div className="space-y-1.5"><Label>Dever de casa</Label><Input value={reportForm.homework} onChange={e => setReportForm(f => ({ ...f, homework: e.target.value }))} /></div>
-            <div className="space-y-1.5"><Label>Observações</Label><Input value={reportForm.observations} onChange={e => setReportForm(f => ({ ...f, observations: e.target.value }))} /></div>
-            <Button type="submit" disabled={saving}><Save className="size-4 mr-2" />{saving ? "Salvando…" : report ? "Atualizar relatório" : "Salvar relatório"}</Button>
+            <div className="space-y-1.5"><Label>Resumo da aula</Label><Input value={reportForm.summary} onChange={e => setReportForm(f => ({ ...f, summary: e.target.value }))} placeholder="O que foi feito…" disabled={!canEdit} /></div>
+            <div className="space-y-1.5"><Label>Atividades realizadas</Label><Input value={reportForm.activities_done} onChange={e => setReportForm(f => ({ ...f, activities_done: e.target.value }))} disabled={!canEdit} /></div>
+            <div className="space-y-1.5"><Label>Dever de casa</Label><Input value={reportForm.homework} onChange={e => setReportForm(f => ({ ...f, homework: e.target.value }))} disabled={!canEdit} /></div>
+            <div className="space-y-1.5"><Label>Observações</Label><Input value={reportForm.observations} onChange={e => setReportForm(f => ({ ...f, observations: e.target.value }))} disabled={!canEdit} /></div>
+            {canEdit && <Button type="submit" disabled={saving}><Save className="size-4 mr-2" />{saving ? "Salvando…" : report ? "Atualizar relatório" : "Salvar relatório"}</Button>}
           </form>
         </TabsContent>
 
         <TabsContent value="materials">
-          <form onSubmit={addMaterial} className="flex gap-2 mb-4 items-end">
+          {canEdit && <form onSubmit={addMaterial} className="flex gap-2 mb-4 items-end">
             <div className="space-y-1.5">
               <Label>Tipo</Label>
               <Select value={materialForm.type} onValueChange={v => setMaterialForm(f => ({ ...f, type: v }))}>
@@ -162,7 +164,7 @@ export default function LessonDetailPage() {
             <div className="space-y-1.5 flex-1"><Label>Título</Label><Input value={materialForm.title} onChange={e => setMaterialForm(f => ({ ...f, title: e.target.value }))} required /></div>
             <div className="space-y-1.5 flex-1"><Label>Conteúdo / URL</Label><Input value={materialForm.content} onChange={e => setMaterialForm(f => ({ ...f, content: e.target.value }))} /></div>
             <Button type="submit" disabled={saving}>Adicionar</Button>
-          </form>
+          </form>}
           <div className="rounded-md border bg-card">
             <Table>
               <TableHeader><TableRow><TableHead>Tipo</TableHead><TableHead>Título</TableHead><TableHead>Conteúdo</TableHead></TableRow></TableHeader>

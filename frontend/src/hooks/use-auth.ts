@@ -43,5 +43,5 @@ export function useAuth() {
     router.push("/login")
   }, [router])
 
-  return { user, loading, login, logout }
+  return { user, loading, login, logout, canEdit: user?.role !== "teacher" }
 }

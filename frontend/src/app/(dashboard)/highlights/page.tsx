@@ -11,11 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Pencil, Plus } from "lucide-react"
+import { useAuth } from "@/hooks/use-auth"
 
 const TYPE_LABEL: Record<string, string> = { performance: "Desempenho", behavior: "Comportamento", evolution: "Evolução" }
 const EMPTY = { student_id: "", class_id: "", title: "", description: "", highlight_type: "performance" }
 
 export default function HighlightsPage() {
+  const { canEdit } = useAuth()
   const [highlights, setHighlights] = useState<StudentHighlight[]>([])
   const [classes, setClasses] = useState<Class_[]>([])
   const [students, setStudents] = useState<Student[]>([])
@@ -65,7 +67,7 @@ export default function HighlightsPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Destaques de Alunos</h1>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Novo destaque</Button></DialogTrigger>
+          {canEdit && <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Novo destaque</Button></DialogTrigger>}
           <DialogContent>
             <DialogHeader><DialogTitle>Registrar destaque</DialogTitle></DialogHeader>
             <form onSubmit={handleCreate}>
@@ -159,7 +161,7 @@ export default function HighlightsPage() {
                   <TableCell>{h.title ?? "—"}</TableCell>
                   <TableCell>{h.highlight_type ? <Badge variant="outline">{TYPE_LABEL[h.highlight_type] ?? h.highlight_type}</Badge> : "—"}</TableCell>
                   <TableCell>{h.created_at ? new Date(h.created_at).toLocaleDateString("pt-BR") : "—"}</TableCell>
-                  <TableCell><Button variant="ghost" size="icon" onClick={() => openEdit(h)}><Pencil className="size-4" /></Button></TableCell>
+                  <TableCell>{canEdit && <Button variant="ghost" size="icon" onClick={() => openEdit(h)}><Pencil className="size-4" /></Button>}</TableCell>
                 </TableRow>
               ))}
               {highlights.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhum destaque registrado</TableCell></TableRow>}

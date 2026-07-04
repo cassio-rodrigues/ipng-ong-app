@@ -11,11 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Pencil, Plus, Trash2 } from "lucide-react"
+import { useAuth } from "@/hooks/use-auth"
 
 const LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"]
 const EMPTY = { title: "", author: "", level: "", isbn: "", description: "" }
 
 export default function BooksPage() {
+  const { canEdit } = useAuth()
   const [books, setBooks] = useState<Book[]>([])
   const [loading, setLoading] = useState(true)
   const [createOpen, setCreateOpen] = useState(false)
@@ -80,7 +82,7 @@ export default function BooksPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Livros</h1>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Novo livro</Button></DialogTrigger>
+          {canEdit && <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Novo livro</Button></DialogTrigger>}
           <DialogContent>
             <DialogHeader><DialogTitle>Novo livro</DialogTitle></DialogHeader>
             <form onSubmit={handleCreate}>
@@ -125,10 +127,10 @@ export default function BooksPage() {
                   <TableCell>{b.chapters?.length ?? 0}</TableCell>
                   <TableCell><Badge variant={b.active ? "default" : "secondary"}>{b.active ? "Ativo" : "Inativo"}</Badge></TableCell>
                   <TableCell>
-                    <div className="flex gap-1">
+                    {canEdit && <div className="flex gap-1">
                       <Button variant="ghost" size="icon" onClick={() => openEdit(b)}><Pencil className="size-4" /></Button>
                       <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(b)}><Trash2 className="size-4" /></Button>
-                    </div>
+                    </div>}
                   </TableCell>
                 </TableRow>
               ))}

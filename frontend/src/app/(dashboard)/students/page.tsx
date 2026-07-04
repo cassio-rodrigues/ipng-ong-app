@@ -11,10 +11,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Pencil, Plus, Trash2, BookOpen } from "lucide-react"
+import { useAuth } from "@/hooks/use-auth"
 
 const EMPTY = { full_name: "", email: "", phone: "", gender: "", birth_date: "", unit_id: "" }
 
 export default function StudentsPage() {
+  const { canEdit } = useAuth()
   const [students, setStudents] = useState<Student[]>([])
   const [units, setUnits] = useState<Unit[]>([])
   const [classes, setClasses] = useState<Class_[]>([])
@@ -121,7 +123,7 @@ export default function StudentsPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Alunos</h1>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Novo aluno</Button></DialogTrigger>
+          {canEdit && <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Novo aluno</Button></DialogTrigger>}
           <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle>Novo aluno</DialogTitle></DialogHeader>
             <form onSubmit={handleCreate}>
@@ -152,13 +154,13 @@ export default function StudentsPage() {
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Matrículas — {enrollStudent?.full_name}</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-2">
-            <form onSubmit={handleEnroll} className="flex gap-2">
+            {canEdit && <form onSubmit={handleEnroll} className="flex gap-2">
               <Select value={enrollClassId} onValueChange={setEnrollClassId}>
                 <SelectTrigger className="flex-1"><SelectValue placeholder="Selecionar turma" /></SelectTrigger>
                 <SelectContent>{classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
               </Select>
               <Button type="submit" disabled={saving || !enrollClassId} size="sm">Matricular</Button>
-            </form>
+            </form>}
             <div className="rounded-md border">
               <Table>
                 <TableHeader><TableRow><TableHead>Turma</TableHead><TableHead>Status</TableHead><TableHead>Data</TableHead></TableRow></TableHeader>
@@ -202,8 +204,8 @@ export default function StudentsPage() {
                   <TableCell><Badge variant={s.status === "active" ? "default" : "secondary"}>{s.status === "active" ? "Ativo" : "Inativo"}</Badge></TableCell>
                   <TableCell><div className="flex gap-1">
                     <Button variant="ghost" size="icon" title="Matrículas" onClick={() => openEnroll(s)}><BookOpen className="size-4" /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => openEdit(s)}><Pencil className="size-4" /></Button>
-                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(s)}><Trash2 className="size-4" /></Button>
+                    {canEdit && <><Button variant="ghost" size="icon" onClick={() => openEdit(s)}><Pencil className="size-4" /></Button>
+                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(s)}><Trash2 className="size-4" /></Button></>}
                   </div></TableCell>
                 </TableRow>
               ))}

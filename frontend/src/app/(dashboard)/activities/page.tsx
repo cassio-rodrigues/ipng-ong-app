@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Pencil, Plus, Users } from "lucide-react"
+import { useAuth } from "@/hooks/use-auth"
 
 const TYPE_LABEL: Record<string, string> = { participation: "Participação", extra: "Extra", event: "Evento", task: "Tarefa" }
 const STATUS_OPTIONS = ["participated", "completed", "absent"]
@@ -20,6 +21,7 @@ const EMPTY = { title: "", class_id: "", type: "participation", description: "",
 interface Response { student_id: string; status: string; score: string; notes: string }
 
 export default function ActivitiesPage() {
+  const { canEdit } = useAuth()
   const [activities, setActivities] = useState<Activity[]>([])
   const [classes, setClasses] = useState<Class_[]>([])
   const [loading, setLoading] = useState(true)
@@ -116,7 +118,7 @@ export default function ActivitiesPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Atividades</h1>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Nova atividade</Button></DialogTrigger>
+          {canEdit && <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Nova atividade</Button></DialogTrigger>}
           <DialogContent>
             <DialogHeader><DialogTitle>Nova atividade</DialogTitle></DialogHeader>
             <form onSubmit={handleCreate}>
@@ -169,8 +171,8 @@ export default function ActivitiesPage() {
               </Table>
             </div>
             <div className="flex justify-end gap-2 pt-4">
-              <Button type="button" variant="outline" onClick={() => setResponseActivity(null)}>Cancelar</Button>
-              <Button type="submit" disabled={saving}>{saving ? "Salvando…" : "Salvar participação"}</Button>
+              <Button type="button" variant="outline" onClick={() => setResponseActivity(null)}>Fechar</Button>
+              {canEdit && <Button type="submit" disabled={saving}>{saving ? "Salvando…" : "Salvar participação"}</Button>}
             </div>
           </form>
         </DialogContent>
@@ -199,7 +201,7 @@ export default function ActivitiesPage() {
                   <TableCell>{a.date ? new Date(a.date).toLocaleString("pt-BR") : "—"}</TableCell>
                   <TableCell><div className="flex gap-1">
                     <Button variant="ghost" size="icon" title="Participação" onClick={() => openResponses(a)}><Users className="size-4" /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => openEdit(a)}><Pencil className="size-4" /></Button>
+                    {canEdit && <Button variant="ghost" size="icon" onClick={() => openEdit(a)}><Pencil className="size-4" /></Button>}
                   </div></TableCell>
                 </TableRow>
               ))}

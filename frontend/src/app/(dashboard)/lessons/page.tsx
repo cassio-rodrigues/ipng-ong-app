@@ -12,11 +12,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ExternalLink, Pencil, Plus, Trash2 } from "lucide-react"
+import { useAuth } from "@/hooks/use-auth"
 
 const STATUS_LABEL: Record<string, string> = { scheduled: "Agendada", completed: "Concluída", cancelled: "Cancelada" }
 const EMPTY = { class_id: "", scheduled_at: "" }
 
 export default function LessonsPage() {
+  const { canEdit } = useAuth()
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [classes, setClasses] = useState<Class_[]>([])
   const [loading, setLoading] = useState(true)
@@ -72,7 +74,7 @@ export default function LessonsPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Aulas</h1>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Agendar aula</Button></DialogTrigger>
+          {canEdit && <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Agendar aula</Button></DialogTrigger>}
           <DialogContent>
             <DialogHeader><DialogTitle>Agendar aula</DialogTitle></DialogHeader>
             <form onSubmit={handleCreate}>
@@ -157,8 +159,8 @@ export default function LessonsPage() {
                     <Button variant="ghost" size="icon" title="Ver detalhes" asChild>
                       <Link href={`/lessons/${l.id}`}><ExternalLink className="size-4" /></Link>
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => openEdit(l)}><Pencil className="size-4" /></Button>
-                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(l)}><Trash2 className="size-4" /></Button>
+                    {canEdit && <><Button variant="ghost" size="icon" onClick={() => openEdit(l)}><Pencil className="size-4" /></Button>
+                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(l)}><Trash2 className="size-4" /></Button></>}
                   </div></TableCell>
                 </TableRow>
               ))}
