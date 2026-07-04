@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { unitsApi, usersApi } from "@/lib/api"
 import type { Unit, User } from "@/types"
 import { Button } from "@/components/ui/button"
@@ -10,13 +10,17 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Pencil, Plus, Trash2 } from "lucide-react"
+import { Pencil, Plus, Trash2, Download, Upload, FileSpreadsheet } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
+import { exportToExcel, downloadTemplate, parseExcel } from "@/lib/excel"
+import { toast } from "sonner"
 
+const UNIT_HEADERS = ["Nome", "Endereço", "Coordenador (email)"]
 const EMPTY = { name: "", address: "", coordinator_id: "" }
 
 export default function UnitsPage() {
   const { canEdit } = useAuth()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [units, setUnits] = useState<Unit[]>([])
   const [coordinators, setCoordinators] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
@@ -62,6 +66,37 @@ export default function UnitsPage() {
 
   const F = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
   const coordMap = Object.fromEntries(coordinators.map(c => [c.id, c.name]))
+  const coordEmailMap = Object.fromEntries(coordinators.map(c => [c.email?.toLowerCase() ?? "", c.id]))
+
+  function handleExport() {
+    exportToExcel(units.map(u => ({
+      "Nome": u.name ?? "",
+      "Endereço": u.address ?? "",
+      "Coordenador (email)": u.coordinator_id ? coordinators.find(c => c.id === u.coordinator_id)?.email ?? "" : "",
+    })), "unidades")
+  }
+
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const rows = await parseExcel(file)
+    let ok = 0, fail = 0
+    for (const row of rows) {
+      const name = String(row["Nome"] ?? "").trim()
+      if (!name) continue
+      try {
+        await unitsApi.create({
+          name,
+          address: row["Endereço"] || undefined,
+          coordinator_id: coordEmailMap[String(row["Coordenador (email)"] ?? "").toLowerCase()] || undefined,
+        })
+        ok++
+      } catch { fail++ }
+    }
+    toast.success(`${ok} importado(s)${fail > 0 ? `, ${fail} com erro` : ""}`)
+    await load()
+    e.target.value = ""
+  }
 
   const formFields = () => (
     <div className="space-y-4 mt-2">
@@ -81,19 +116,27 @@ export default function UnitsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Unidades</h1>
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          {canEdit && <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Nova unidade</Button></DialogTrigger>}
-          <DialogContent>
-            <DialogHeader><DialogTitle>Nova unidade</DialogTitle></DialogHeader>
-            <form onSubmit={handleCreate}>
-              {formFields()}
-              <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
-                <Button type="submit" disabled={saving}>{saving ? "Salvando…" : "Criar"}</Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleExport}><Download className="size-4 mr-2" />Exportar</Button>
+          {canEdit && <>
+            <Button variant="outline" size="sm" onClick={() => downloadTemplate(UNIT_HEADERS, "unidades")}><FileSpreadsheet className="size-4 mr-2" />Modelo</Button>
+            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}><Upload className="size-4 mr-2" />Importar</Button>
+            <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImport} />
+          </>}
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            {canEdit && <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Nova unidade</Button></DialogTrigger>}
+            <DialogContent>
+              <DialogHeader><DialogTitle>Nova unidade</DialogTitle></DialogHeader>
+              <form onSubmit={handleCreate}>
+                {formFields()}
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
+                  <Button type="submit" disabled={saving}>{saving ? "Salvando…" : "Criar"}</Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <Dialog open={!!editUnit} onOpenChange={o => !o && setEditUnit(null)}>
