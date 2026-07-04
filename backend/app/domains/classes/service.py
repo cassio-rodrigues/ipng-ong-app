@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 
 from app.domains.classes.schemas import ClassAssignmentBase, ClassCreate, ClassUpdate
 from app.models.class_ import Class_, ClassAssignment
-from app.models.student import Enrollment
+from app.models.student import Enrollment, Student
 
 
 async def list_classes(
@@ -63,6 +63,8 @@ async def add_assignment(db: AsyncSession, class_id: uuid.UUID, data: ClassAssig
 
 async def get_class_students(db: AsyncSession, class_id: uuid.UUID):
     result = await db.execute(
-        select(Enrollment).where(Enrollment.class_id == class_id, Enrollment.status == "active")
+        select(Student)
+        .join(Enrollment, Enrollment.student_id == Student.id)
+        .where(Enrollment.class_id == class_id, Enrollment.status == "active")
     )
     return list(result.scalars().all())
