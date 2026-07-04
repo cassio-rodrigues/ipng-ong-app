@@ -25,7 +25,7 @@ async def get_users(
     skip: int = 0,
     limit: int = 50,
     db: AsyncSession = Depends(get_db),
-    _=Depends(require_role("admin", "coordinator")),
+    _=Depends(get_current_user),
 ):
     return await list_users(db, skip, limit)
 
