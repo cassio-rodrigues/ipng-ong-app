@@ -57,8 +57,8 @@ export default function AssessmentGradesPage() {
   const update = (i: number, k: "score" | "feedback", v: string) =>
     setRows(rs => rs.map((r, j) => j === i ? { ...r, [k]: v } : r))
 
-  async function handleExport() {
-    await exportToExcel(rows.map(r => ({
+  function handleExport() {
+    exportToExcel(rows.map(r => ({
       "Aluno": r.student_name,
       "Nota": r.score,
       "Feedback": r.feedback,

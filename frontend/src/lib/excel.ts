@@ -1,21 +1,22 @@
-export async function exportToExcel(rows: Record<string, unknown>[], filename: string) {
-  const XLSX = await import("xlsx")
+"use client"
+
+import * as XLSX from "xlsx"
+
+export function exportToExcel(rows: Record<string, unknown>[], filename: string) {
   const ws = XLSX.utils.json_to_sheet(rows)
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, "Dados")
   XLSX.writeFile(wb, `${filename}.xlsx`)
 }
 
-export async function downloadTemplate(headers: string[], filename: string) {
-  const XLSX = await import("xlsx")
+export function downloadTemplate(headers: string[], filename: string) {
   const ws = XLSX.utils.aoa_to_sheet([headers])
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, "Modelo")
   XLSX.writeFile(wb, `modelo_${filename}.xlsx`)
 }
 
-export async function parseExcel(file: File): Promise<Record<string, string>[]> {
-  const XLSX = await import("xlsx")
+export function parseExcel(file: File): Promise<Record<string, string>[]> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = (e) => {
