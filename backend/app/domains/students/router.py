@@ -16,6 +16,8 @@ from app.domains.students.service import (
     list_students,
     update_student,
 )
+from app.domains.students.history_schemas import StudentHistory
+from app.domains.students.history_service import get_student_history
 
 router = APIRouter(prefix="/students", tags=["Students"])
 
@@ -64,6 +66,14 @@ async def get_enrollments_route(student_id: uuid.UUID, db: AsyncSession = Depend
     if not student:
         raise HTTPException(status_code=404, detail="Aluno não encontrado")
     return await get_enrollments(db, student_id)
+
+
+@router.get("/{student_id}/history", response_model=StudentHistory)
+async def get_history(student_id: uuid.UUID, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
+    history = await get_student_history(db, student_id)
+    if not history:
+        raise HTTPException(status_code=404, detail="Aluno não encontrado")
+    return history
 
 
 @router.post("/{student_id}/enrollments", response_model=EnrollmentResponse, status_code=status.HTTP_201_CREATED)

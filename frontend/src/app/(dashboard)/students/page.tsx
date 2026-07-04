@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Pencil, Plus, Trash2, BookOpen, Download, Upload, FileSpreadsheet } from "lucide-react"
+import { Pencil, Plus, Trash2, BookOpen, Download, Upload, FileSpreadsheet, ExternalLink } from "lucide-react"
+import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
 import { exportToExcel, downloadTemplate, parseExcel, fmtDate } from "@/lib/excel"
 import { toast } from "sonner"
@@ -254,6 +255,9 @@ export default function StudentsPage() {
                   <TableCell>{s.birth_date ? new Date(s.birth_date).toLocaleDateString("pt-BR") : "—"}</TableCell>
                   <TableCell><Badge variant={s.status === "active" ? "default" : "secondary"}>{s.status === "active" ? "Ativo" : "Inativo"}</Badge></TableCell>
                   <TableCell><div className="flex gap-1">
+                    <Button variant="ghost" size="icon" title="Ver histórico" asChild>
+                      <Link href={`/students/${s.id}`}><ExternalLink className="size-4" /></Link>
+                    </Button>
                     <Button variant="ghost" size="icon" title="Matrículas" onClick={() => openEnroll(s)}><BookOpen className="size-4" /></Button>
                     {canManage && <><Button variant="ghost" size="icon" onClick={() => openEdit(s)}><Pencil className="size-4" /></Button>
                     <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(s)}><Trash2 className="size-4" /></Button></>}

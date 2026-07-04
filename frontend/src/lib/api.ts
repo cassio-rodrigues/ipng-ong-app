@@ -120,6 +120,7 @@ export const studentsApi = {
   getEnrollments: (id: string) => api.get(`/students/${id}/enrollments`),
   enroll: (id: string, class_id: string) =>
     api.post(`/students/${id}/enrollments`, { class_id }),
+  getHistory: (id: string) => api.get(`/students/${id}/history`),
 }
 
 // Lessons
