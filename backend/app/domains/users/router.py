@@ -24,10 +24,11 @@ router = APIRouter(prefix="/users", tags=["Users"])
 async def get_users(
     skip: int = 0,
     limit: int = 50,
+    status: str | None = None,
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_user),
 ):
-    return await list_users(db, skip, limit)
+    return await list_users(db, skip, limit, status)
 
 
 @router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)

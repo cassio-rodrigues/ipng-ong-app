@@ -11,10 +11,11 @@ from app.domains.users.schemas import UserCreate, UserUpdate
 from app.models.user import TeacherProfile, User
 
 
-async def list_users(db: AsyncSession, skip: int = 0, limit: int = 50) -> list[User]:
-    result = await db.execute(
-        select(User).options(selectinload(User.teacher_profile)).offset(skip).limit(limit)
-    )
+async def list_users(db: AsyncSession, skip: int = 0, limit: int = 50, status: str | None = None) -> list[User]:
+    q = select(User).options(selectinload(User.teacher_profile))
+    if status:
+        q = q.where(User.status == status)
+    result = await db.execute(q.offset(skip).limit(limit))
     return list(result.scalars().all())
 
 

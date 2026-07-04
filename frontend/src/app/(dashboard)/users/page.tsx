@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Pencil, Plus, Trash2, Download, Upload, FileSpreadsheet } from "lucide-react"
+import { Pencil, Plus, Trash2, Download, Upload, FileSpreadsheet, RotateCcw } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { exportToExcel, downloadTemplate, parseExcel, fmtDate } from "@/lib/excel"
 import { toast } from "sonner"
@@ -24,6 +24,7 @@ export default function UsersPage() {
   const { canEdit } = useAuth()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [users, setUsers] = useState<User[]>([])
+  const [filterStatus, setFilterStatus] = useState("all")
   const [loading, setLoading] = useState(true)
   const [createOpen, setCreateOpen] = useState(false)
   const [editUser, setEditUser] = useState<User | null>(null)
@@ -31,11 +32,13 @@ export default function UsersPage() {
   const [saving, setSaving] = useState(false)
 
   async function load() {
-    try { const { data } = await usersApi.list({ limit: 100 }); setUsers(data) }
+    const params: Record<string, unknown> = { limit: 100 }
+    if (filterStatus !== "all") params.status = filterStatus
+    try { const { data } = await usersApi.list(params); setUsers(data) }
     finally { setLoading(false) }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [filterStatus])
 
   function openEdit(u: User) {
     setEditUser(u)
@@ -61,8 +64,13 @@ export default function UsersPage() {
   }
 
   async function handleDelete(u: User) {
-    if (!confirm(`Excluir "${u.name}"? Esta ação desativa o usuário.`)) return
+    if (!confirm(`Desativar "${u.name}"?`)) return
     await usersApi.deactivate(u.id); await load()
+  }
+
+  async function handleReactivate(u: User) {
+    if (!confirm(`Reativar "${u.name}"?`)) return
+    await usersApi.update(u.id, { status: "active" }); await load()
   }
 
   const F = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
@@ -188,6 +196,17 @@ export default function UsersPage() {
         </DialogContent>
       </Dialog>
 
+      <div className="flex gap-3 mb-4">
+        <Select value={filterStatus} onValueChange={setFilterStatus}>
+          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="active">Ativos</SelectItem>
+            <SelectItem value="inactive">Inativos</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       {loading ? <p className="text-muted-foreground text-sm">Carregando…</p> : (
         <div className="rounded-md border bg-card overflow-x-auto">
           <Table>
@@ -204,7 +223,10 @@ export default function UsersPage() {
                   <TableCell><Badge variant={u.status === "active" ? "default" : "secondary"}>{u.status === "active" ? "Ativo" : "Inativo"}</Badge></TableCell>
                   <TableCell>{canEdit && <div className="flex gap-1">
                     <Button variant="ghost" size="icon" onClick={() => openEdit(u)}><Pencil className="size-4" /></Button>
-                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(u)}><Trash2 className="size-4" /></Button>
+                    {u.status === "inactive"
+                      ? <Button variant="ghost" size="icon" className="text-green-600 hover:text-green-700" title="Reativar" onClick={() => handleReactivate(u)}><RotateCcw className="size-4" /></Button>
+                      : <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" title="Desativar" onClick={() => handleDelete(u)}><Trash2 className="size-4" /></Button>
+                    }
                   </div>}</TableCell>
                 </TableRow>
               ))}

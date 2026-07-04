@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Pencil, Plus, Trash2, BookOpen, Download, Upload, FileSpreadsheet, ExternalLink } from "lucide-react"
+import { Pencil, Plus, Trash2, BookOpen, Download, Upload, FileSpreadsheet, ExternalLink, RotateCcw } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
 import { exportToExcel, downloadTemplate, parseExcel, fmtDate } from "@/lib/excel"
@@ -34,13 +34,17 @@ export default function StudentsPage() {
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [enrollClassId, setEnrollClassId] = useState("")
   const [filterUnit, setFilterUnit] = useState("all")
+  const [filterStatus, setFilterStatus] = useState("all")
   const [form, setForm] = useState({ ...EMPTY })
   const [saving, setSaving] = useState(false)
 
   async function load() {
     try {
+      const params: Record<string, string> = {}
+      if (filterUnit !== "all") params.unit_id = filterUnit
+      if (filterStatus !== "all") params.status = filterStatus
       const [sRes, uRes, cRes] = await Promise.all([
-        studentsApi.list(filterUnit !== "all" ? { unit_id: filterUnit } : {}),
+        studentsApi.list(params),
         unitsApi.list(),
         classesApi.list(),
       ])
@@ -48,7 +52,7 @@ export default function StudentsPage() {
     } finally { setLoading(false) }
   }
 
-  useEffect(() => { load() }, [filterUnit])
+  useEffect(() => { load() }, [filterUnit, filterStatus])
 
   function openEdit(s: Student) {
     setEditStudent(s)
@@ -77,9 +81,14 @@ export default function StudentsPage() {
     } finally { setSaving(false) }
   }
 
-  async function handleDelete(s: Student) {
+  async function handleDeactivate(s: Student) {
     if (!confirm(`Desativar aluno "${s.full_name}"?`)) return
     await studentsApi.update(s.id, { status: "inactive" }); await load()
+  }
+
+  async function handleReactivate(s: Student) {
+    if (!confirm(`Reativar aluno "${s.full_name}"?`)) return
+    await studentsApi.update(s.id, { status: "active" }); await load()
   }
 
   async function handleEnroll(e: React.FormEvent) {
@@ -232,7 +241,15 @@ export default function StudentsPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="flex gap-4 mb-4">
+      <div className="flex gap-3 mb-4 flex-wrap">
+        <Select value={filterStatus} onValueChange={setFilterStatus}>
+          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="active">Ativos</SelectItem>
+            <SelectItem value="inactive">Inativos</SelectItem>
+          </SelectContent>
+        </Select>
         <Select value={filterUnit} onValueChange={setFilterUnit}>
           <SelectTrigger className="w-52"><SelectValue placeholder="Filtrar por unidade" /></SelectTrigger>
           <SelectContent>
@@ -259,8 +276,13 @@ export default function StudentsPage() {
                       <Link href={`/students/${s.id}`}><ExternalLink className="size-4" /></Link>
                     </Button>
                     <Button variant="ghost" size="icon" title="Matrículas" onClick={() => openEnroll(s)}><BookOpen className="size-4" /></Button>
-                    {canManage && <><Button variant="ghost" size="icon" onClick={() => openEdit(s)}><Pencil className="size-4" /></Button>
-                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(s)}><Trash2 className="size-4" /></Button></>}
+                    {canManage && <>
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(s)}><Pencil className="size-4" /></Button>
+                      {s.status === "inactive"
+                        ? <Button variant="ghost" size="icon" className="text-green-600 hover:text-green-700" title="Reativar" onClick={() => handleReactivate(s)}><RotateCcw className="size-4" /></Button>
+                        : <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" title="Desativar" onClick={() => handleDeactivate(s)}><Trash2 className="size-4" /></Button>
+                      }
+                    </>}
                   </div></TableCell>
                 </TableRow>
               ))}
