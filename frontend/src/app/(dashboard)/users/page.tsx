@@ -67,8 +67,8 @@ export default function UsersPage() {
 
   const F = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
 
-  function handleExport() {
-    exportToExcel(users.map(u => ({
+  async function handleExport() {
+    await exportToExcel(users.map(u => ({
       "Nome": u.name ?? "",
       "Email": u.email ?? "",
       "Perfil (admin/coordinator/teacher)": u.role ?? "",
@@ -155,7 +155,7 @@ export default function UsersPage() {
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleExport}><Download className="size-4 mr-2" />Exportar</Button>
           {canEdit && <>
-            <Button variant="outline" size="sm" onClick={() => downloadTemplate(USER_HEADERS, "usuarios")}><FileSpreadsheet className="size-4 mr-2" />Modelo</Button>
+            <Button variant="outline" size="sm" onClick={() => downloadTemplate(USER_HEADERS, "usuarios").catch(console.error)}><FileSpreadsheet className="size-4 mr-2" />Modelo</Button>
             <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}><Upload className="size-4 mr-2" />Importar</Button>
             <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImport} />
           </>}

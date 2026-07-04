@@ -79,8 +79,8 @@ export default function ClassesPage() {
   const teacherEmailMap = Object.fromEntries(teachers.map(t => [t.email?.toLowerCase() ?? "", t.id]))
   const bookTitleMap = Object.fromEntries(books.map(b => [b.title?.toLowerCase() ?? "", b.id]))
 
-  function handleExport() {
-    exportToExcel(classes.map(c => ({
+  async function handleExport() {
+    await exportToExcel(classes.map(c => ({
       "Nome": c.name ?? "",
       "Nível (A1/A2/B1/B2/C1/C2)": c.level ?? "",
       "Unidade": c.unit_id ? unitMap[c.unit_id] ?? "" : "",
@@ -164,7 +164,7 @@ export default function ClassesPage() {
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleExport}><Download className="size-4 mr-2" />Exportar</Button>
           {canEdit && <>
-            <Button variant="outline" size="sm" onClick={() => downloadTemplate(CLASS_HEADERS, "turmas")}><FileSpreadsheet className="size-4 mr-2" />Modelo</Button>
+            <Button variant="outline" size="sm" onClick={() => downloadTemplate(CLASS_HEADERS, "turmas").catch(console.error)}><FileSpreadsheet className="size-4 mr-2" />Modelo</Button>
             <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}><Upload className="size-4 mr-2" />Importar</Button>
             <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImport} />
           </>}

@@ -1,20 +1,21 @@
-import * as XLSX from "xlsx"
-
-export function exportToExcel(rows: Record<string, unknown>[], filename: string) {
+export async function exportToExcel(rows: Record<string, unknown>[], filename: string) {
+  const XLSX = await import("xlsx")
   const ws = XLSX.utils.json_to_sheet(rows)
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, "Dados")
   XLSX.writeFile(wb, `${filename}.xlsx`)
 }
 
-export function downloadTemplate(headers: string[], filename: string) {
+export async function downloadTemplate(headers: string[], filename: string) {
+  const XLSX = await import("xlsx")
   const ws = XLSX.utils.aoa_to_sheet([headers])
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, "Modelo")
   XLSX.writeFile(wb, `modelo_${filename}.xlsx`)
 }
 
-export function parseExcel(file: File): Promise<Record<string, string>[]> {
+export async function parseExcel(file: File): Promise<Record<string, string>[]> {
+  const XLSX = await import("xlsx")
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = (e) => {
@@ -30,7 +31,6 @@ export function parseExcel(file: File): Promise<Record<string, string>[]> {
   })
 }
 
-// Converte DD/MM/AAAA → YYYY-MM-DD para a API
 export function fmtDate(val: string | undefined): string | undefined {
   if (!val) return undefined
   const m = val.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
