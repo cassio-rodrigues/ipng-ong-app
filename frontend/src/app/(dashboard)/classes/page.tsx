@@ -161,16 +161,15 @@ export default function ClassesPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Turmas</h1>
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <div className="flex gap-2">
+        <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleExport}><Download className="size-4 mr-2" />Exportar</Button>
           {canEdit && <>
             <Button variant="outline" size="sm" onClick={() => downloadTemplate(CLASS_HEADERS, "turmas")}><FileSpreadsheet className="size-4 mr-2" />Modelo</Button>
             <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}><Upload className="size-4 mr-2" />Importar</Button>
             <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImport} />
           </>}
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           {canEdit && <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Nova turma</Button></DialogTrigger>}
-        </div>
           <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle>Nova turma</DialogTitle></DialogHeader>
             <form onSubmit={handleCreate}>
@@ -181,7 +180,8 @@ export default function ClassesPage() {
               </div>
             </form>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       <Dialog open={!!editClass} onOpenChange={o => !o && setEditClass(null)}>

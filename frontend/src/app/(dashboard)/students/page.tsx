@@ -164,16 +164,15 @@ export default function StudentsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Alunos</h1>
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <div className="flex gap-2">
+        <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleExport}><Download className="size-4 mr-2" />Exportar</Button>
           {canEdit && <>
             <Button variant="outline" size="sm" onClick={() => downloadTemplate(STUDENT_HEADERS, "alunos")}><FileSpreadsheet className="size-4 mr-2" />Modelo</Button>
             <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}><Upload className="size-4 mr-2" />Importar</Button>
             <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImport} />
           </>}
-          <DialogTrigger asChild>{canEdit && <Button size="sm"><Plus className="size-4 mr-2" />Novo aluno</Button>}</DialogTrigger>
-        </div>
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            {canEdit && <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Novo aluno</Button></DialogTrigger>}
           <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle>Novo aluno</DialogTitle></DialogHeader>
             <form onSubmit={handleCreate}>
@@ -184,7 +183,8 @@ export default function StudentsPage() {
               </div>
             </form>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       <Dialog open={!!editStudent} onOpenChange={o => !o && setEditStudent(null)}>
