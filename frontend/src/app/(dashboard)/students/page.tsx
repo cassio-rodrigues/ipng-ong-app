@@ -91,7 +91,7 @@ export default function StudentsPage() {
 
   const F = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
   const classMap = Object.fromEntries(classes.map(c => [c.id, c.name]))
-  const unitNameMap = Object.fromEntries(units.map(u => [u.name.toLowerCase(), u.id]))
+  const unitNameMap = Object.fromEntries(units.map(u => [u.name?.toLowerCase() ?? "", u.id]))
 
   function handleExport() {
     exportToExcel(students.map(s => ({
