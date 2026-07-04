@@ -76,6 +76,19 @@ async def get_history(student_id: uuid.UUID, db: AsyncSession = Depends(get_db),
     return history
 
 
+@router.delete("/{student_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_student(
+    student_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_role("admin", "coordinator")),
+):
+    student = await get_student(db, student_id)
+    if not student:
+        raise HTTPException(status_code=404, detail="Aluno não encontrado")
+    await db.delete(student)
+    await db.commit()
+
+
 @router.post("/{student_id}/enrollments", response_model=EnrollmentResponse, status_code=status.HTTP_201_CREATED)
 async def enroll(
     student_id: uuid.UUID,

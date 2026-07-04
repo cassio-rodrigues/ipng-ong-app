@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Pencil, Plus, Trash2, Download, Upload, FileSpreadsheet, RotateCcw } from "lucide-react"
+import { Pencil, Plus, Trash2, Download, Upload, FileSpreadsheet } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { exportToExcel, downloadTemplate, parseExcel, fmtDate } from "@/lib/excel"
 import { toast } from "sonner"
@@ -64,13 +64,8 @@ export default function UsersPage() {
   }
 
   async function handleDelete(u: User) {
-    if (!confirm(`Desativar "${u.name}"?`)) return
+    if (!confirm(`Excluir permanentemente "${u.name}"? Esta ação não pode ser desfeita.`)) return
     await usersApi.deactivate(u.id); await load()
-  }
-
-  async function handleReactivate(u: User) {
-    if (!confirm(`Reativar "${u.name}"?`)) return
-    await usersApi.update(u.id, { status: "active" }); await load()
   }
 
   const F = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
@@ -237,10 +232,7 @@ export default function UsersPage() {
                   <TableCell><Badge variant={u.status === "active" ? "default" : "secondary"}>{u.status === "active" ? "Ativo" : "Inativo"}</Badge></TableCell>
                   <TableCell>{canEdit && <div className="flex gap-1">
                     <Button variant="ghost" size="icon" onClick={() => openEdit(u)}><Pencil className="size-4" /></Button>
-                    {u.status === "inactive"
-                      ? <Button variant="ghost" size="icon" className="text-green-600 hover:text-green-700" title="Reativar" onClick={() => handleReactivate(u)}><RotateCcw className="size-4" /></Button>
-                      : <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" title="Desativar" onClick={() => handleDelete(u)}><Trash2 className="size-4" /></Button>
-                    }
+                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" title="Excluir" onClick={() => handleDelete(u)}><Trash2 className="size-4" /></Button>
                   </div>}</TableCell>
                 </TableRow>
               ))}

@@ -62,7 +62,7 @@ async def update(
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def deactivate(
+async def delete_user_route(
     user_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     _=Depends(require_role("admin")),
@@ -70,7 +70,8 @@ async def deactivate(
     user = await get_user(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
-    await deactivate_user(db, user)
+    await db.delete(user)
+    await db.commit()
 
 
 @router.get("/{user_id}/teacher-profile", response_model=TeacherProfileResponse)
