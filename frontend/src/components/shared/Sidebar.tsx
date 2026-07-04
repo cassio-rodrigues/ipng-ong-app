@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -42,9 +43,8 @@ export function Sidebar() {
 
   return (
     <aside className="flex flex-col w-64 min-h-screen bg-sidebar border-r border-sidebar-border">
-      <div className="px-6 py-5 border-b border-sidebar-border">
-        <h1 className="text-lg font-bold text-sidebar-foreground tracking-tight">IPNG</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">Gestão Educacional</p>
+      <div className="px-6 py-4 border-b border-sidebar-border">
+        <Image src="/logo.png" alt="IPNG" width={140} height={48} className="object-contain" priority />
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
