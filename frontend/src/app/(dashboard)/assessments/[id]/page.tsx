@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { assessmentsApi, classesApi } from "@/lib/api"
 import type { Assessment, Student, StudentGrade } from "@/types"
@@ -8,8 +8,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ArrowLeft, Save } from "lucide-react"
+import { ArrowLeft, Save, Download, Upload } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
+import { exportToExcel, parseExcel } from "@/lib/excel"
+import { toast } from "sonner"
 
 interface GradeRow { student_id: string; student_name: string; score: string; feedback: string }
 
@@ -17,6 +19,7 @@ export default function AssessmentGradesPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const { canEdit } = useAuth()
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [assessment, setAssessment] = useState<Assessment | null>(null)
   const [rows, setRows] = useState<GradeRow[]>([])
@@ -54,6 +57,36 @@ export default function AssessmentGradesPage() {
   const update = (i: number, k: "score" | "feedback", v: string) =>
     setRows(rs => rs.map((r, j) => j === i ? { ...r, [k]: v } : r))
 
+  function handleExport() {
+    exportToExcel(rows.map(r => ({
+      "Aluno": r.student_name,
+      "Nota": r.score,
+      "Feedback": r.feedback,
+    })), `notas_${assessment?.title ?? id}`)
+  }
+
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const imported = await parseExcel(file)
+    const nameMap = Object.fromEntries(rows.map(r => [r.student_name.toLowerCase(), r.student_id]))
+    let found = 0
+    setRows(prev => {
+      const updated = [...prev]
+      for (const row of imported) {
+        const sid = nameMap[String(row["Aluno"] ?? "").toLowerCase()]
+        if (!sid) continue
+        const idx = updated.findIndex(r => r.student_id === sid)
+        if (idx === -1) continue
+        updated[idx] = { ...updated[idx], score: String(row["Nota"] ?? ""), feedback: String(row["Feedback"] ?? "") }
+        found++
+      }
+      return updated
+    })
+    toast.success(`${found} nota(s) preenchida(s) — clique "Salvar notas" para confirmar`)
+    e.target.value = ""
+  }
+
   if (loading) return <p className="text-muted-foreground text-sm p-6">Carregando…</p>
   if (!assessment) return <p className="text-muted-foreground text-sm p-6">Avaliação não encontrada.</p>
 
@@ -71,6 +104,14 @@ export default function AssessmentGradesPage() {
             {filled > 0 && <> · <span className="text-foreground">Média: {avg}</span></>}
           </p>
         </div>
+      </div>
+
+      <div className="flex gap-2 mb-3">
+        <Button variant="outline" size="sm" onClick={handleExport} disabled={rows.length === 0}><Download className="size-4 mr-2" />Exportar notas</Button>
+        {canEdit && <>
+          <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={rows.length === 0}><Upload className="size-4 mr-2" />Importar notas</Button>
+          <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImport} />
+        </>}
       </div>
 
       <div className="rounded-md border bg-card mb-4">

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { usersApi } from "@/lib/api"
 import type { User } from "@/types"
 import { Button } from "@/components/ui/button"
@@ -10,14 +10,19 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Pencil, Plus, Trash2 } from "lucide-react"
+import { Pencil, Plus, Trash2, Download, Upload, FileSpreadsheet } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
+import { exportToExcel, downloadTemplate, parseExcel, fmtDate } from "@/lib/excel"
+import { toast } from "sonner"
+
+const USER_HEADERS = ["Nome", "Email", "Senha", "Perfil (admin/coordinator/teacher)", "Telefone", "Nascimento (DD/MM/AAAA)", "Gênero (M/F/O)"]
 
 const ROLE_LABEL: Record<string, string> = { admin: "Admin", coordinator: "Coordenador", teacher: "Professor" }
 const EMPTY = { name: "", email: "", password: "", role: "teacher", telefone: "", gender: "", birth_date: "" }
 
 export default function UsersPage() {
   const { canEdit } = useAuth()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [createOpen, setCreateOpen] = useState(false)
@@ -61,6 +66,45 @@ export default function UsersPage() {
   }
 
   const F = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
+
+  function handleExport() {
+    exportToExcel(users.map(u => ({
+      "Nome": u.name ?? "",
+      "Email": u.email ?? "",
+      "Perfil (admin/coordinator/teacher)": u.role ?? "",
+      "Telefone": u.telefone ?? "",
+      "Nascimento (DD/MM/AAAA)": u.birth_date ? new Date(u.birth_date).toLocaleDateString("pt-BR") : "",
+      "Gênero (M/F/O)": u.gender ?? "",
+    })), "usuarios")
+  }
+
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const rows = await parseExcel(file)
+    let ok = 0, fail = 0
+    for (const row of rows) {
+      const name = String(row["Nome"] ?? "").trim()
+      const email = String(row["Email"] ?? "").trim()
+      const senha = String(row["Senha"] ?? "").trim()
+      if (!name || !email || !senha) continue
+      try {
+        await usersApi.create({
+          name,
+          email,
+          password: senha,
+          role: String(row["Perfil (admin/coordinator/teacher)"] ?? "teacher"),
+          telefone: row["Telefone"] || undefined,
+          birth_date: fmtDate(row["Nascimento (DD/MM/AAAA)"]),
+          gender: row["Gênero (M/F/O)"] || undefined,
+        })
+        ok++
+      } catch { fail++ }
+    }
+    toast.success(`${ok} importado(s)${fail > 0 ? `, ${fail} com erro` : ""}`)
+    await load()
+    e.target.value = ""
+  }
 
   const formFields = (isEdit?: boolean) => (
     <div className="space-y-4 mt-2">
@@ -109,7 +153,15 @@ export default function UsersPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Usuários</h1>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+          <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleExport}><Download className="size-4 mr-2" />Exportar</Button>
+          {canEdit && <>
+            <Button variant="outline" size="sm" onClick={() => downloadTemplate(USER_HEADERS, "usuarios")}><FileSpreadsheet className="size-4 mr-2" />Modelo</Button>
+            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}><Upload className="size-4 mr-2" />Importar</Button>
+            <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImport} />
+          </>}
           {canEdit && <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Novo usuário</Button></DialogTrigger>}
+        </div>
           <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle>Novo usuário</DialogTitle></DialogHeader>
             <form onSubmit={handleCreate}>

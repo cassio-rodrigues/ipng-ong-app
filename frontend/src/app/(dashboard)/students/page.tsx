@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { studentsApi, unitsApi, classesApi } from "@/lib/api"
 import type { Student, Unit, Class_, Enrollment } from "@/types"
 import { Button } from "@/components/ui/button"
@@ -10,13 +10,18 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Pencil, Plus, Trash2, BookOpen } from "lucide-react"
+import { Pencil, Plus, Trash2, BookOpen, Download, Upload, FileSpreadsheet } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
+import { exportToExcel, downloadTemplate, parseExcel, fmtDate } from "@/lib/excel"
+import { toast } from "sonner"
 
 const EMPTY = { full_name: "", email: "", phone: "", gender: "", birth_date: "", unit_id: "" }
 
+const STUDENT_HEADERS = ["Nome completo", "Email", "Telefone", "Nascimento (DD/MM/AAAA)", "Gênero (M/F/O)", "Unidade"]
+
 export default function StudentsPage() {
   const { canEdit } = useAuth()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [students, setStudents] = useState<Student[]>([])
   const [units, setUnits] = useState<Unit[]>([])
   const [classes, setClasses] = useState<Class_[]>([])
@@ -86,6 +91,43 @@ export default function StudentsPage() {
 
   const F = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
   const classMap = Object.fromEntries(classes.map(c => [c.id, c.name]))
+  const unitNameMap = Object.fromEntries(units.map(u => [u.name.toLowerCase(), u.id]))
+
+  function handleExport() {
+    exportToExcel(students.map(s => ({
+      "Nome completo": s.full_name ?? "",
+      "Email": s.email ?? "",
+      "Telefone": s.phone ?? "",
+      "Nascimento (DD/MM/AAAA)": s.birth_date ? new Date(s.birth_date).toLocaleDateString("pt-BR") : "",
+      "Gênero (M/F/O)": s.gender ?? "",
+      "Unidade": units.find(u => u.id === s.unit_id)?.name ?? "",
+    })), "alunos")
+  }
+
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const rows = await parseExcel(file)
+    let ok = 0, fail = 0
+    for (const row of rows) {
+      const name = String(row["Nome completo"] ?? "").trim()
+      if (!name) continue
+      try {
+        await studentsApi.create({
+          full_name: name,
+          email: row["Email"] || undefined,
+          phone: row["Telefone"] || undefined,
+          birth_date: fmtDate(row["Nascimento (DD/MM/AAAA)"]),
+          gender: row["Gênero (M/F/O)"] || undefined,
+          unit_id: unitNameMap[String(row["Unidade"] ?? "").toLowerCase()] || undefined,
+        })
+        ok++
+      } catch { fail++ }
+    }
+    toast.success(`${ok} importado(s)${fail > 0 ? `, ${fail} com erro` : ""}`)
+    await load()
+    e.target.value = ""
+  }
 
   const formFields = () => (
     <div className="space-y-4 mt-2">
@@ -123,7 +165,15 @@ export default function StudentsPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Alunos</h1>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          {canEdit && <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Novo aluno</Button></DialogTrigger>}
+          <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleExport}><Download className="size-4 mr-2" />Exportar</Button>
+          {canEdit && <>
+            <Button variant="outline" size="sm" onClick={() => downloadTemplate(STUDENT_HEADERS, "alunos")}><FileSpreadsheet className="size-4 mr-2" />Modelo</Button>
+            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}><Upload className="size-4 mr-2" />Importar</Button>
+            <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImport} />
+          </>}
+          <DialogTrigger asChild>{canEdit && <Button size="sm"><Plus className="size-4 mr-2" />Novo aluno</Button>}</DialogTrigger>
+        </div>
           <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle>Novo aluno</DialogTitle></DialogHeader>
             <form onSubmit={handleCreate}>

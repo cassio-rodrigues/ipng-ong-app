@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { classesApi, unitsApi, usersApi, booksApi } from "@/lib/api"
 import type { Class_, Unit, User, Book } from "@/types"
 import { Button } from "@/components/ui/button"
@@ -10,14 +10,19 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Pencil, Plus, Trash2 } from "lucide-react"
+import { Pencil, Plus, Trash2, Download, Upload, FileSpreadsheet } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
+import { exportToExcel, downloadTemplate, parseExcel, fmtDate } from "@/lib/excel"
+import { toast } from "sonner"
+
+const CLASS_HEADERS = ["Nome", "Nível (A1/A2/B1/B2/C1/C2)", "Unidade", "Professor (email)", "Livro", "Início (DD/MM/AAAA)", "Fim (DD/MM/AAAA)"]
 
 const LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"]
 const EMPTY = { name: "", level: "", unit_id: "", main_teacher_id: "", book_id: "", start_date: "", end_date: "" }
 
 export default function ClassesPage() {
   const { canEdit } = useAuth()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [classes, setClasses] = useState<Class_[]>([])
   const [units, setUnits] = useState<Unit[]>([])
   const [teachers, setTeachers] = useState<User[]>([])
@@ -70,6 +75,47 @@ export default function ClassesPage() {
   const F = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
   const unitMap = Object.fromEntries(units.map(u => [u.id, u.name]))
   const teacherMap = Object.fromEntries(teachers.map(t => [t.id, t.name]))
+  const unitNameMap = Object.fromEntries(units.map(u => [u.name.toLowerCase(), u.id]))
+  const teacherEmailMap = Object.fromEntries(teachers.map(t => [t.email?.toLowerCase() ?? "", t.id]))
+  const bookTitleMap = Object.fromEntries(books.map(b => [b.title?.toLowerCase() ?? "", b.id]))
+
+  function handleExport() {
+    exportToExcel(classes.map(c => ({
+      "Nome": c.name ?? "",
+      "Nível (A1/A2/B1/B2/C1/C2)": c.level ?? "",
+      "Unidade": c.unit_id ? unitMap[c.unit_id] ?? "" : "",
+      "Professor (email)": c.main_teacher_id ? teachers.find(t => t.id === c.main_teacher_id)?.email ?? "" : "",
+      "Livro": c.book_id ? books.find(b => b.id === c.book_id)?.title ?? "" : "",
+      "Início (DD/MM/AAAA)": c.start_date ? new Date(c.start_date).toLocaleDateString("pt-BR") : "",
+      "Fim (DD/MM/AAAA)": c.end_date ? new Date(c.end_date).toLocaleDateString("pt-BR") : "",
+    })), "turmas")
+  }
+
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const rows = await parseExcel(file)
+    let ok = 0, fail = 0
+    for (const row of rows) {
+      const name = String(row["Nome"] ?? "").trim()
+      if (!name) continue
+      try {
+        await classesApi.create({
+          name,
+          level: row["Nível (A1/A2/B1/B2/C1/C2)"] || undefined,
+          unit_id: unitNameMap[String(row["Unidade"] ?? "").toLowerCase()] || undefined,
+          main_teacher_id: teacherEmailMap[String(row["Professor (email)"] ?? "").toLowerCase()] || undefined,
+          book_id: bookTitleMap[String(row["Livro"] ?? "").toLowerCase()] || undefined,
+          start_date: fmtDate(row["Início (DD/MM/AAAA)"]),
+          end_date: fmtDate(row["Fim (DD/MM/AAAA)"]),
+        })
+        ok++
+      } catch { fail++ }
+    }
+    toast.success(`${ok} importado(s)${fail > 0 ? `, ${fail} com erro` : ""}`)
+    await load()
+    e.target.value = ""
+  }
 
   const formFields = () => (
     <div className="space-y-4 mt-2">
@@ -116,7 +162,15 @@ export default function ClassesPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Turmas</h1>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+          <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleExport}><Download className="size-4 mr-2" />Exportar</Button>
+          {canEdit && <>
+            <Button variant="outline" size="sm" onClick={() => downloadTemplate(CLASS_HEADERS, "turmas")}><FileSpreadsheet className="size-4 mr-2" />Modelo</Button>
+            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}><Upload className="size-4 mr-2" />Importar</Button>
+            <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImport} />
+          </>}
           {canEdit && <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Nova turma</Button></DialogTrigger>}
+        </div>
           <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle>Nova turma</DialogTitle></DialogHeader>
             <form onSubmit={handleCreate}>
