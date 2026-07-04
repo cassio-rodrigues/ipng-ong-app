@@ -9,6 +9,7 @@ from app.models.calendar import CalendarEvent
 from app.models.assessment import Assessment, StudentGrade
 from app.models.activity import Activity, StudentActivity, StudentHighlight
 from app.models.audit import AuditLog
+from app.models.book_loan import BookLoan
 
 __all__ = [
     "User",
@@ -31,4 +32,5 @@ __all__ = [
     "StudentActivity",
     "StudentHighlight",
     "AuditLog",
+    "BookLoan",
 ]

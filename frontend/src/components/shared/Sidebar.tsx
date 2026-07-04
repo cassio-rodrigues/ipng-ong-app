@@ -17,6 +17,7 @@ import {
   Trophy,
   ScrollText,
   LogOut,
+  BookMarked,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/hooks/use-auth"
@@ -34,6 +35,7 @@ const navItems = [
   { href: "/activities", label: "Atividades", icon: Zap },
   { href: "/highlights", label: "Destaques", icon: Trophy },
   { href: "/calendar", label: "Calendário", icon: CalendarDays },
+  { href: "/loans", label: "Empréstimos", icon: BookMarked },
   { href: "/audit", label: "Auditoria", icon: ScrollText },
 ]
 
@@ -44,7 +46,7 @@ export function Sidebar() {
   return (
     <aside className="flex flex-col w-64 min-h-screen bg-sidebar border-r border-sidebar-border">
       <div className="px-6 py-4 border-b border-sidebar-border">
-        <Image src="/logo.png" alt="IPNG" width={140} height={48} className="object-contain" priority />
+        <Image src="/logo.png" alt="IPNG" width={140} height={48} className="object-contain" priority unoptimized />
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">

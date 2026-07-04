@@ -184,6 +184,16 @@ export const highlightsApi = {
   update: (id: string, data: object) => api.patch(`/highlights/${id}`, data),
 }
 
+// Loans
+export const loansApi = {
+  list: (params?: { student_id?: string; book_id?: string; status?: string }) =>
+    api.get("/loans", { params }),
+  create: (data: { student_id: string; book_id: string; due_date?: string; notes?: string }) =>
+    api.post("/loans", data),
+  return: (id: string, notes?: string) =>
+    api.patch(`/loans/${id}/return`, { notes }),
+}
+
 // Audit
 export const auditApi = {
   list: (params?: { skip?: number; limit?: number; entity_type?: string; user_id?: string }) =>

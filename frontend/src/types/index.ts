@@ -161,6 +161,19 @@ export interface CalendarEvent {
   visibility: string | null
 }
 
+export interface BookLoan {
+  id: string
+  student_id: string
+  book_id: string
+  borrowed_at: string
+  due_date: string | null
+  returned_at: string | null
+  status: string
+  notes: string | null
+  student: { id: string; full_name: string | null } | null
+  book: { id: string; title: string | null; author: string | null } | null
+}
+
 export interface Activity {
   id: string
   class_id: string | null
