@@ -1,6 +1,5 @@
 "use client"
 
-import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -46,7 +45,8 @@ export function Sidebar() {
   return (
     <aside className="flex flex-col w-64 min-h-screen bg-sidebar border-r border-sidebar-border">
       <div className="px-6 py-4 border-b border-sidebar-border">
-        <Image src="/logo.png" alt="IPNG" width={140} height={48} className="object-contain" priority unoptimized />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.png" alt="IPNG" className="h-12 w-auto object-contain" />
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
