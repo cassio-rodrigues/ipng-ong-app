@@ -1,4 +1,4 @@
-.PHONY: up down migrate seed logs shell reset prod-up prod-down prod-logs prod-migrate ssl-init
+.PHONY: up down migrate seed logs shell reset prod-up prod-down prod-logs prod-migrate prod-deploy ssl-init
 
 # ── Desenvolvimento ────────────────────────────────────────────────────────────
 
@@ -39,6 +39,11 @@ prod-logs:
 
 prod-migrate:
 	docker compose -f docker-compose.prod.yml exec backend alembic upgrade head
+
+prod-deploy:
+	git pull
+	docker compose -f docker-compose.prod.yml build --no-cache frontend backend
+	docker compose -f docker-compose.prod.yml up -d
 
 # Primeira configuração do SSL. Uso: make ssl-init DOMAIN=seudominio.com EMAIL=seu@email.com
 ssl-init:
