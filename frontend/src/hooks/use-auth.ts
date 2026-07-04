@@ -35,6 +35,12 @@ export function useAuth() {
     [router]
   )
 
+  const refreshUser = useCallback(async () => {
+    const meRes = await authApi.me()
+    localStorage.setItem("user", JSON.stringify(meRes.data))
+    setUser(meRes.data)
+  }, [])
+
   const logout = useCallback(() => {
     localStorage.removeItem("access_token")
     localStorage.removeItem("refresh_token")
@@ -43,5 +49,5 @@ export function useAuth() {
     router.push("/login")
   }, [router])
 
-  return { user, loading, login, logout, canEdit: user?.role !== "teacher" }
+  return { user, loading, login, logout, refreshUser, canEdit: user?.role !== "teacher" }
 }

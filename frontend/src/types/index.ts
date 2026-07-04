@@ -7,6 +7,7 @@ export interface User {
   gender: string | null
   birth_date: string | null
   status: string | null
+  must_change_password: boolean
   created_at: string | null
   updated_at: string | null
   teacher_profile?: TeacherProfile | null

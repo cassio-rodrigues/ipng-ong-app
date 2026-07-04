@@ -35,6 +35,7 @@ async def create_user(db: AsyncSession, data: UserCreate) -> User:
         birth_date=data.birth_date,
         password_hash=hash_password(data.password),
         status="active",
+        must_change_password=True,
     )
     db.add(user)
     await db.commit()
@@ -49,6 +50,7 @@ async def update_user(db: AsyncSession, user: User, data: UserUpdate) -> User:
         setattr(user, field, value)
     if data.password:
         user.password_hash = hash_password(data.password)
+        user.must_change_password = False
     await db.commit()
     await db.refresh(user)
     return user

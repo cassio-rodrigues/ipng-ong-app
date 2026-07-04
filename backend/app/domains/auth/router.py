@@ -7,8 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
-from app.core.security import create_access_token, decode_token
-from app.domains.auth.schemas import LoginRequest, RefreshRequest, TokenResponse
+from app.core.security import create_access_token, decode_token, hash_password, verify_password
+from app.domains.auth.schemas import ChangePasswordRequest, LoginRequest, RefreshRequest, TokenResponse
 from app.domains.auth.service import authenticate, build_tokens
 from app.domains.users.schemas import UserResponse
 
@@ -42,3 +42,13 @@ async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db)):
 @router.get("/me", response_model=UserResponse)
 async def me(current_user=Depends(get_current_user)):
     return current_user
+
+
+@router.post("/change-password")
+async def change_password(body: ChangePasswordRequest, db: AsyncSession = Depends(get_db), current_user=Depends(get_current_user)):
+    if not verify_password(body.current_password, current_user.password_hash or ""):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Senha atual incorreta")
+    current_user.password_hash = hash_password(body.new_password)
+    current_user.must_change_password = False
+    await db.commit()
+    return {"detail": "Senha alterada com sucesso"}

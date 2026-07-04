@@ -42,6 +42,7 @@ class UserResponse(UserBase):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID
     status: str | None = None
+    must_change_password: bool = False
     created_at: datetime | None = None
     updated_at: datetime | None = None
     teacher_profile: TeacherProfileResponse | None = None
