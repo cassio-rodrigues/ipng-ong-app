@@ -20,10 +20,11 @@ async def get_classes(
     unit_id: uuid.UUID | None = None,
     status: str | None = None,
     level: str | None = None,
+    teacher_id: uuid.UUID | None = None,
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_user),
 ):
-    return await list_classes(db, skip, limit, unit_id, status, level)
+    return await list_classes(db, skip, limit, unit_id, status, level, teacher_id)
 
 
 @router.post("", response_model=ClassResponse, status_code=status.HTTP_201_CREATED)

@@ -38,3 +38,10 @@ export function fmtDate(val: string | undefined): string | undefined {
   if (m) return `${m[3]}-${m[2]}-${m[1]}`
   return val || undefined
 }
+
+export function fmtDateTime(val: string | undefined): string | undefined {
+  if (!val) return undefined
+  const m = val.match(/^(\d{2})\/(\d{2})\/(\d{4})[,\s]+(\d{2}):(\d{2})/)
+  if (m) return `${m[3]}-${m[2]}-${m[1]}T${m[4]}:${m[5]}`
+  return val || undefined
+}

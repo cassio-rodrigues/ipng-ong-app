@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { activitiesApi, classesApi } from "@/lib/api"
 import type { Activity, Class_, Student } from "@/types"
 import { Button } from "@/components/ui/button"
@@ -10,9 +10,12 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Pencil, Plus, Users } from "lucide-react"
+import { Pencil, Plus, Users, Download, Upload, FileSpreadsheet } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
+import { exportToExcel, downloadTemplate, parseExcel, fmtDateTime } from "@/lib/excel"
+import { toast } from "sonner"
 
+const ACTIVITY_HEADERS = ["Título", "Turma (nome)", "Tipo (participation/extra/event/task)", "Data (DD/MM/AAAA HH:MM)", "Descrição"]
 const TYPE_LABEL: Record<string, string> = { participation: "Participação", extra: "Extra", event: "Evento", task: "Tarefa" }
 const STATUS_OPTIONS = ["participated", "completed", "absent"]
 const STATUS_LABEL: Record<string, string> = { participated: "Participou", completed: "Concluiu", absent: "Faltou" }
@@ -21,7 +24,9 @@ const EMPTY = { title: "", class_id: "", type: "participation", description: "",
 interface Response { student_id: string; status: string; score: string; notes: string }
 
 export default function ActivitiesPage() {
-  const { canEdit } = useAuth()
+  const { canEdit, isTeacher, user } = useAuth()
+  const canManage = canEdit || isTeacher
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [activities, setActivities] = useState<Activity[]>([])
   const [classes, setClasses] = useState<Class_[]>([])
   const [loading, setLoading] = useState(true)
@@ -36,9 +41,10 @@ export default function ActivitiesPage() {
 
   async function load() {
     try {
+      const classParams = isTeacher && user?.id ? { teacher_id: user.id } : {}
       const [aRes, cRes] = await Promise.all([
         activitiesApi.list(filterClass !== "all" ? { class_id: filterClass } : {}),
-        classesApi.list(),
+        classesApi.list(classParams),
       ])
       setActivities(aRes.data); setClasses(cRes.data)
     } finally { setLoading(false) }
@@ -82,7 +88,43 @@ export default function ActivitiesPage() {
 
   const F = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
   const classMap = Object.fromEntries(classes.map(c => [c.id, c.name]))
+  const classNameMap = Object.fromEntries(classes.map(c => [(c.name ?? "").toLowerCase(), c.id]))
   const studentMap = Object.fromEntries(responseStudents.map(s => [s.id, s.full_name]))
+
+  function handleExport() {
+    exportToExcel(activities.map(a => ({
+      "Título": a.title ?? "",
+      "Turma (nome)": a.class_id ? classMap[a.class_id] ?? "" : "",
+      "Tipo (participation/extra/event/task)": a.type ?? "",
+      "Data (DD/MM/AAAA HH:MM)": a.date ? new Date(a.date).toLocaleString("pt-BR") : "",
+      "Descrição": a.description ?? "",
+    })), "atividades")
+  }
+
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const rows = await parseExcel(file)
+    let ok = 0, fail = 0
+    for (const row of rows) {
+      const title = String(row["Título"] ?? "").trim()
+      const class_id = classNameMap[String(row["Turma (nome)"] ?? "").toLowerCase()]
+      if (!title || !class_id) { fail++; continue }
+      try {
+        await activitiesApi.create({
+          title,
+          class_id,
+          type: row["Tipo (participation/extra/event/task)"] || "participation",
+          date: fmtDateTime(row["Data (DD/MM/AAAA HH:MM)"]),
+          description: row["Descrição"] || undefined,
+        })
+        ok++
+      } catch { fail++ }
+    }
+    toast.success(`${ok} importado(s)${fail > 0 ? `, ${fail} com erro` : ""}`)
+    await load()
+    e.target.value = ""
+  }
 
   const formFields = () => (
     <div className="space-y-4 mt-2">
@@ -117,19 +159,27 @@ export default function ActivitiesPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Atividades</h1>
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          {canEdit && <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Nova atividade</Button></DialogTrigger>}
-          <DialogContent>
-            <DialogHeader><DialogTitle>Nova atividade</DialogTitle></DialogHeader>
-            <form onSubmit={handleCreate}>
-              {formFields()}
-              <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
-                <Button type="submit" disabled={saving || !form.class_id}>{saving ? "Salvando…" : "Criar"}</Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleExport}><Download className="size-4 mr-2" />Exportar</Button>
+          {canManage && <>
+            <Button variant="outline" size="sm" onClick={() => downloadTemplate(ACTIVITY_HEADERS, "atividades")}><FileSpreadsheet className="size-4 mr-2" />Modelo</Button>
+            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}><Upload className="size-4 mr-2" />Importar</Button>
+            <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImport} />
+          </>}
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            {canManage && <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Nova atividade</Button></DialogTrigger>}
+            <DialogContent>
+              <DialogHeader><DialogTitle>Nova atividade</DialogTitle></DialogHeader>
+              <form onSubmit={handleCreate}>
+                {formFields()}
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
+                  <Button type="submit" disabled={saving || !form.class_id}>{saving ? "Salvando…" : "Criar"}</Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <Dialog open={!!editActivity} onOpenChange={o => !o && setEditActivity(null)}>
@@ -172,7 +222,7 @@ export default function ActivitiesPage() {
             </div>
             <div className="flex justify-end gap-2 pt-4">
               <Button type="button" variant="outline" onClick={() => setResponseActivity(null)}>Fechar</Button>
-              {canEdit && <Button type="submit" disabled={saving}>{saving ? "Salvando…" : "Salvar participação"}</Button>}
+              {canManage && <Button type="submit" disabled={saving}>{saving ? "Salvando…" : "Salvar participação"}</Button>}
             </div>
           </form>
         </DialogContent>
@@ -201,7 +251,7 @@ export default function ActivitiesPage() {
                   <TableCell>{a.date ? new Date(a.date).toLocaleString("pt-BR") : "—"}</TableCell>
                   <TableCell><div className="flex gap-1">
                     <Button variant="ghost" size="icon" title="Participação" onClick={() => openResponses(a)}><Users className="size-4" /></Button>
-                    {canEdit && <Button variant="ghost" size="icon" onClick={() => openEdit(a)}><Pencil className="size-4" /></Button>}
+                    {canManage && <Button variant="ghost" size="icon" onClick={() => openEdit(a)}><Pencil className="size-4" /></Button>}
                   </div></TableCell>
                 </TableRow>
               ))}

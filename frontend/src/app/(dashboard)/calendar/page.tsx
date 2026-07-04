@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { calendarApi, unitsApi } from "@/lib/api"
 import type { CalendarEvent, Unit } from "@/types"
 import { Button } from "@/components/ui/button"
@@ -10,15 +10,19 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Pencil, Plus, Trash2 } from "lucide-react"
+import { Pencil, Plus, Trash2, Download, Upload, FileSpreadsheet } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
+import { exportToExcel, downloadTemplate, parseExcel, fmtDateTime } from "@/lib/excel"
+import { toast } from "sonner"
 
+const CALENDAR_HEADERS = ["Título", "Tipo (holiday/institutional/class_event)", "Início (DD/MM/AAAA HH:MM)", "Fim (DD/MM/AAAA HH:MM)", "Visibilidade (all/teachers/coordinators)", "Descrição"]
 const EVENT_TYPES: Record<string, string> = { holiday: "Feriado", institutional: "Institucional", class_event: "Evento de turma" }
 const VISIBILITY_LABEL: Record<string, string> = { all: "Todos", teachers: "Professores", coordinators: "Coordenadores" }
 const EMPTY = { title: "", event_type: "institutional", start_date: "", end_date: "", description: "", visibility: "all", unit_id: "", is_all_day: "false" }
 
 export default function CalendarPage() {
   const { canEdit } = useAuth()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [units, setUnits] = useState<Unit[]>([])
   const [loading, setLoading] = useState(true)
@@ -61,6 +65,42 @@ export default function CalendarPage() {
   }
 
   const F = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
+
+  function handleExport() {
+    exportToExcel(events.map(ev => ({
+      "Título": ev.title ?? "",
+      "Tipo (holiday/institutional/class_event)": ev.event_type ?? "",
+      "Início (DD/MM/AAAA HH:MM)": ev.start_date ? new Date(ev.start_date).toLocaleString("pt-BR") : "",
+      "Fim (DD/MM/AAAA HH:MM)": ev.end_date ? new Date(ev.end_date).toLocaleString("pt-BR") : "",
+      "Visibilidade (all/teachers/coordinators)": ev.visibility ?? "",
+      "Descrição": ev.description ?? "",
+    })), "calendario")
+  }
+
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const rows = await parseExcel(file)
+    let ok = 0, fail = 0
+    for (const row of rows) {
+      const title = String(row["Título"] ?? "").trim()
+      if (!title) continue
+      try {
+        await calendarApi.create({
+          title,
+          event_type: row["Tipo (holiday/institutional/class_event)"] || "institutional",
+          start_date: fmtDateTime(row["Início (DD/MM/AAAA HH:MM)"]),
+          end_date: fmtDateTime(row["Fim (DD/MM/AAAA HH:MM)"]),
+          visibility: row["Visibilidade (all/teachers/coordinators)"] || "all",
+          description: row["Descrição"] || undefined,
+        })
+        ok++
+      } catch { fail++ }
+    }
+    toast.success(`${ok} importado(s)${fail > 0 ? `, ${fail} com erro` : ""}`)
+    await load()
+    e.target.value = ""
+  }
 
   const formFields = () => (
     <div className="space-y-4 mt-2">
@@ -111,18 +151,26 @@ export default function CalendarPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Calendário Institucional</h1>
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          {canEdit && <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Novo evento</Button></DialogTrigger>}
-          <DialogContent className="max-w-lg">
-            <DialogHeader><DialogTitle>Novo evento</DialogTitle></DialogHeader>
-            <form onSubmit={handleCreate}>{formFields()}
-              <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
-                <Button type="submit" disabled={saving}>{saving ? "Salvando…" : "Criar"}</Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleExport}><Download className="size-4 mr-2" />Exportar</Button>
+          {canEdit && <>
+            <Button variant="outline" size="sm" onClick={() => downloadTemplate(CALENDAR_HEADERS, "calendario")}><FileSpreadsheet className="size-4 mr-2" />Modelo</Button>
+            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}><Upload className="size-4 mr-2" />Importar</Button>
+            <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImport} />
+          </>}
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            {canEdit && <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Novo evento</Button></DialogTrigger>}
+            <DialogContent className="max-w-lg">
+              <DialogHeader><DialogTitle>Novo evento</DialogTitle></DialogHeader>
+              <form onSubmit={handleCreate}>{formFields()}
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
+                  <Button type="submit" disabled={saving}>{saving ? "Salvando…" : "Criar"}</Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <Dialog open={!!editEvent} onOpenChange={o => !o && setEditEvent(null)}>

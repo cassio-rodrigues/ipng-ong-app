@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { assessmentsApi, classesApi } from "@/lib/api"
 import type { Assessment, Class_ } from "@/types"
 import Link from "next/link"
@@ -10,9 +10,12 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ExternalLink, Pencil, Plus } from "lucide-react"
+import { ExternalLink, Pencil, Plus, Download, Upload, FileSpreadsheet } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
+import { exportToExcel, downloadTemplate, parseExcel, fmtDateTime } from "@/lib/excel"
+import { toast } from "sonner"
 
+const ASSESSMENT_HEADERS = ["Título", "Turma (nome)", "Tipo (written/oral/quiz/final)", "Semestre", "Nota máxima", "Data (DD/MM/AAAA HH:MM)"]
 const TYPE_OPTS = [
   { value: "written", label: "Escrita" },
   { value: "oral", label: "Oral" },
@@ -22,7 +25,9 @@ const TYPE_OPTS = [
 const EMPTY = { title: "", class_id: "", type: "", semester: "", max_score: "10", date: "" }
 
 export default function AssessmentsPage() {
-  const { canEdit } = useAuth()
+  const { canEdit, isTeacher, user } = useAuth()
+  const canManage = canEdit || isTeacher
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [assessments, setAssessments] = useState<Assessment[]>([])
   const [classes, setClasses] = useState<Class_[]>([])
   const [loading, setLoading] = useState(true)
@@ -34,9 +39,10 @@ export default function AssessmentsPage() {
 
   async function load() {
     try {
+      const classParams = isTeacher && user?.id ? { teacher_id: user.id } : {}
       const [aRes, cRes] = await Promise.all([
         assessmentsApi.list(filterClass !== "all" ? { class_id: filterClass } : {}),
-        classesApi.list(),
+        classesApi.list(classParams),
       ])
       setAssessments(aRes.data); setClasses(cRes.data)
     } finally { setLoading(false) }
@@ -63,6 +69,44 @@ export default function AssessmentsPage() {
 
   const F = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
   const classMap = Object.fromEntries(classes.map(c => [c.id, c.name]))
+  const classNameMap = Object.fromEntries(classes.map(c => [(c.name ?? "").toLowerCase(), c.id]))
+
+  function handleExport() {
+    exportToExcel(assessments.map(a => ({
+      "Título": a.title ?? "",
+      "Turma (nome)": a.class_id ? classMap[a.class_id] ?? "" : "",
+      "Tipo (written/oral/quiz/final)": a.type ?? "",
+      "Semestre": a.semester ?? "",
+      "Nota máxima": a.max_score ?? "",
+      "Data (DD/MM/AAAA HH:MM)": a.date ? new Date(a.date).toLocaleString("pt-BR") : "",
+    })), "avaliacoes")
+  }
+
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const rows = await parseExcel(file)
+    let ok = 0, fail = 0
+    for (const row of rows) {
+      const title = String(row["Título"] ?? "").trim()
+      const class_id = classNameMap[String(row["Turma (nome)"] ?? "").toLowerCase()]
+      if (!title || !class_id) { fail++; continue }
+      try {
+        await assessmentsApi.create({
+          title,
+          class_id,
+          type: row["Tipo (written/oral/quiz/final)"] || undefined,
+          semester: row["Semestre"] || undefined,
+          max_score: row["Nota máxima"] ? Number(row["Nota máxima"]) : 10,
+          date: fmtDateTime(row["Data (DD/MM/AAAA HH:MM)"]),
+        })
+        ok++
+      } catch { fail++ }
+    }
+    toast.success(`${ok} importado(s)${fail > 0 ? `, ${fail} com erro` : ""}`)
+    await load()
+    e.target.value = ""
+  }
 
   const formFields = () => (
     <div className="space-y-4 mt-2">
@@ -104,19 +148,27 @@ export default function AssessmentsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Avaliações</h1>
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          {canEdit && <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Nova avaliação</Button></DialogTrigger>}
-          <DialogContent>
-            <DialogHeader><DialogTitle>Nova avaliação</DialogTitle></DialogHeader>
-            <form onSubmit={handleCreate}>
-              {formFields()}
-              <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
-                <Button type="submit" disabled={saving || !form.class_id}>{saving ? "Salvando…" : "Criar"}</Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleExport}><Download className="size-4 mr-2" />Exportar</Button>
+          {canManage && <>
+            <Button variant="outline" size="sm" onClick={() => downloadTemplate(ASSESSMENT_HEADERS, "avaliacoes")}><FileSpreadsheet className="size-4 mr-2" />Modelo</Button>
+            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}><Upload className="size-4 mr-2" />Importar</Button>
+            <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImport} />
+          </>}
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            {canManage && <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Nova avaliação</Button></DialogTrigger>}
+            <DialogContent>
+              <DialogHeader><DialogTitle>Nova avaliação</DialogTitle></DialogHeader>
+              <form onSubmit={handleCreate}>
+                {formFields()}
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
+                  <Button type="submit" disabled={saving || !form.class_id}>{saving ? "Salvando…" : "Criar"}</Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <Dialog open={!!editAssessment} onOpenChange={o => !o && setEditAssessment(null)}>
@@ -159,7 +211,7 @@ export default function AssessmentsPage() {
                     <Button variant="ghost" size="icon" title="Ver notas" asChild>
                       <Link href={`/assessments/${a.id}`}><ExternalLink className="size-4" /></Link>
                     </Button>
-                    {canEdit && <Button variant="ghost" size="icon" onClick={() => openEdit(a)}><Pencil className="size-4" /></Button>}
+                    {canManage && <Button variant="ghost" size="icon" onClick={() => openEdit(a)}><Pencil className="size-4" /></Button>}
                   </div></TableCell>
                 </TableRow>
               ))}

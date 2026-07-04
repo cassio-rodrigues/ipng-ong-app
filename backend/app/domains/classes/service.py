@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -18,6 +18,7 @@ async def list_classes(
     unit_id: uuid.UUID | None = None,
     status: str | None = None,
     level: str | None = None,
+    teacher_id: uuid.UUID | None = None,
 ) -> list[Class_]:
     q = select(Class_).options(selectinload(Class_.assignments))
     if unit_id:
@@ -26,6 +27,9 @@ async def list_classes(
         q = q.where(Class_.status == status)
     if level:
         q = q.where(Class_.level == level)
+    if teacher_id:
+        assigned = select(ClassAssignment.class_id).where(ClassAssignment.teacher_id == teacher_id)
+        q = q.where(or_(Class_.main_teacher_id == teacher_id, Class_.id.in_(assigned)))
     result = await db.execute(q.offset(skip).limit(limit))
     return list(result.scalars().all())
 

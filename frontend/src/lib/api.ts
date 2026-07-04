@@ -100,7 +100,7 @@ export const booksApi = {
 
 // Classes
 export const classesApi = {
-  list: (params?: { unit_id?: string; status?: string; level?: string }) =>
+  list: (params?: { unit_id?: string; status?: string; level?: string; teacher_id?: string }) =>
     api.get("/classes", { params }),
   get: (id: string) => api.get(`/classes/${id}`),
   create: (data: object) => api.post("/classes", data),

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { booksApi } from "@/lib/api"
 import type { Book } from "@/types"
 import { Button } from "@/components/ui/button"
@@ -10,14 +10,18 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Pencil, Plus, Trash2 } from "lucide-react"
+import { Pencil, Plus, Trash2, Download, Upload, FileSpreadsheet } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
+import { exportToExcel, downloadTemplate, parseExcel } from "@/lib/excel"
+import { toast } from "sonner"
 
+const BOOK_HEADERS = ["Título", "Autor", "Nível (A1/A2/B1/B2/C1/C2)", "ISBN", "Descrição"]
 const LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"]
 const EMPTY = { title: "", author: "", level: "", isbn: "", description: "" }
 
 export default function BooksPage() {
   const { canEdit } = useAuth()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [books, setBooks] = useState<Book[]>([])
   const [loading, setLoading] = useState(true)
   const [createOpen, setCreateOpen] = useState(false)
@@ -56,6 +60,40 @@ export default function BooksPage() {
 
   const F = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
 
+  function handleExport() {
+    exportToExcel(books.map(b => ({
+      "Título": b.title ?? "",
+      "Autor": b.author ?? "",
+      "Nível (A1/A2/B1/B2/C1/C2)": b.level ?? "",
+      "ISBN": b.isbn ?? "",
+      "Descrição": b.description ?? "",
+    })), "livros")
+  }
+
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const rows = await parseExcel(file)
+    let ok = 0, fail = 0
+    for (const row of rows) {
+      const title = String(row["Título"] ?? "").trim()
+      if (!title) continue
+      try {
+        await booksApi.create({
+          title,
+          author: row["Autor"] || undefined,
+          level: row["Nível (A1/A2/B1/B2/C1/C2)"] || undefined,
+          isbn: row["ISBN"] || undefined,
+          description: row["Descrição"] || undefined,
+        })
+        ok++
+      } catch { fail++ }
+    }
+    toast.success(`${ok} importado(s)${fail > 0 ? `, ${fail} com erro` : ""}`)
+    await load()
+    e.target.value = ""
+  }
+
   const formFields = () => (
     <div className="space-y-4 mt-2">
       <div className="space-y-1.5">
@@ -81,19 +119,27 @@ export default function BooksPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Livros</h1>
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          {canEdit && <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Novo livro</Button></DialogTrigger>}
-          <DialogContent>
-            <DialogHeader><DialogTitle>Novo livro</DialogTitle></DialogHeader>
-            <form onSubmit={handleCreate}>
-              {formFields()}
-              <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
-                <Button type="submit" disabled={saving}>{saving ? "Salvando…" : "Criar"}</Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleExport}><Download className="size-4 mr-2" />Exportar</Button>
+          {canEdit && <>
+            <Button variant="outline" size="sm" onClick={() => downloadTemplate(BOOK_HEADERS, "livros")}><FileSpreadsheet className="size-4 mr-2" />Modelo</Button>
+            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}><Upload className="size-4 mr-2" />Importar</Button>
+            <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImport} />
+          </>}
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            {canEdit && <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Novo livro</Button></DialogTrigger>}
+            <DialogContent>
+              <DialogHeader><DialogTitle>Novo livro</DialogTitle></DialogHeader>
+              <form onSubmit={handleCreate}>
+                {formFields()}
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
+                  <Button type="submit" disabled={saving}>{saving ? "Salvando…" : "Criar"}</Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <Dialog open={!!editBook} onOpenChange={o => !o && setEditBook(null)}>

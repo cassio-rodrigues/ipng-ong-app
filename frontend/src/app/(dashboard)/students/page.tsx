@@ -20,7 +20,8 @@ const EMPTY = { full_name: "", email: "", phone: "", gender: "", birth_date: "",
 const STUDENT_HEADERS = ["Nome completo", "Email", "Telefone", "Nascimento (DD/MM/AAAA)", "Gênero (M/F/O)", "Unidade"]
 
 export default function StudentsPage() {
-  const { canEdit } = useAuth()
+  const { canEdit, isTeacher } = useAuth()
+  const canManage = canEdit || isTeacher
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [students, setStudents] = useState<Student[]>([])
   const [units, setUnits] = useState<Unit[]>([])
@@ -166,13 +167,13 @@ export default function StudentsPage() {
         <h1 className="text-2xl font-bold">Alunos</h1>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleExport}><Download className="size-4 mr-2" />Exportar</Button>
-          {canEdit && <>
+          {canManage && <>
             <Button variant="outline" size="sm" onClick={() => downloadTemplate(STUDENT_HEADERS, "alunos")}><FileSpreadsheet className="size-4 mr-2" />Modelo</Button>
             <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}><Upload className="size-4 mr-2" />Importar</Button>
             <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImport} />
           </>}
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-            {canEdit && <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Novo aluno</Button></DialogTrigger>}
+            {canManage && <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Novo aluno</Button></DialogTrigger>}
           <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle>Novo aluno</DialogTitle></DialogHeader>
             <form onSubmit={handleCreate}>
@@ -204,7 +205,7 @@ export default function StudentsPage() {
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Matrículas — {enrollStudent?.full_name}</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-2">
-            {canEdit && <form onSubmit={handleEnroll} className="flex gap-2">
+            {canManage && <form onSubmit={handleEnroll} className="flex gap-2">
               <Select value={enrollClassId} onValueChange={setEnrollClassId}>
                 <SelectTrigger className="flex-1"><SelectValue placeholder="Selecionar turma" /></SelectTrigger>
                 <SelectContent>{classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
@@ -254,7 +255,7 @@ export default function StudentsPage() {
                   <TableCell><Badge variant={s.status === "active" ? "default" : "secondary"}>{s.status === "active" ? "Ativo" : "Inativo"}</Badge></TableCell>
                   <TableCell><div className="flex gap-1">
                     <Button variant="ghost" size="icon" title="Matrículas" onClick={() => openEnroll(s)}><BookOpen className="size-4" /></Button>
-                    {canEdit && <><Button variant="ghost" size="icon" onClick={() => openEdit(s)}><Pencil className="size-4" /></Button>
+                    {canManage && <><Button variant="ghost" size="icon" onClick={() => openEdit(s)}><Pencil className="size-4" /></Button>
                     <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(s)}><Trash2 className="size-4" /></Button></>}
                   </div></TableCell>
                 </TableRow>
