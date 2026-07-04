@@ -30,8 +30,9 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/40 px-4">
       <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">IPNG</CardTitle>
+        <CardHeader className="text-center items-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="IPNG" className="h-16 w-auto object-contain mb-2" />
           <CardDescription>Gestão Educacional — Acesso ao painel</CardDescription>
         </CardHeader>
         <CardContent>
