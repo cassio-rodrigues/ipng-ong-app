@@ -19,7 +19,8 @@ const ACTIVITY_HEADERS = ["Título", "Turma (nome)", "Tipo (participation/extra/
 const TYPE_LABEL: Record<string, string> = { participation: "Participação", extra: "Extra", event: "Evento", task: "Tarefa" }
 const STATUS_OPTIONS = ["participated", "completed", "absent"]
 const STATUS_LABEL: Record<string, string> = { participated: "Participou", completed: "Concluiu", absent: "Faltou" }
-const EMPTY = { title: "", class_id: "", type: "participation", description: "", date: "" }
+const today = () => new Date().toISOString().slice(0, 10)
+const getEmpty = () => ({ title: "", class_id: "", type: "participation", description: "", date: `${today()}T00:00` })
 
 interface Response { student_id: string; status: string; score: string; notes: string }
 
@@ -36,7 +37,7 @@ export default function ActivitiesPage() {
   const [responseStudents, setResponseStudents] = useState<Student[]>([])
   const [responses, setResponses] = useState<Response[]>([])
   const [filterClass, setFilterClass] = useState("all")
-  const [form, setForm] = useState({ ...EMPTY })
+  const [form, setForm] = useState(getEmpty())
   const [saving, setSaving] = useState(false)
 
   async function load() {
@@ -68,7 +69,7 @@ export default function ActivitiesPage() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault(); setSaving(true)
-    try { await activitiesApi.create({ ...form, date: form.date || undefined }); setCreateOpen(false); setForm({ ...EMPTY }); await load() }
+    try { await activitiesApi.create({ ...form, date: form.date || undefined }); setCreateOpen(false); setForm(getEmpty()); await load() }
     finally { setSaving(false) }
   }
 

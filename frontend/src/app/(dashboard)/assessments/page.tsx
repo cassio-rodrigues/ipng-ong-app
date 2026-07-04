@@ -22,7 +22,8 @@ const TYPE_OPTS = [
   { value: "quiz", label: "Quiz" },
   { value: "final", label: "Exame Final" },
 ]
-const EMPTY = { title: "", class_id: "", type: "", semester: "", max_score: "10", date: "" }
+const today = () => new Date().toISOString().slice(0, 10)
+const getEmpty = () => ({ title: "", class_id: "", type: "", semester: "", max_score: "10", date: `${today()}T00:00` })
 
 export default function AssessmentsPage() {
   const { canEdit, isTeacher, user } = useAuth()
@@ -34,7 +35,7 @@ export default function AssessmentsPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [editAssessment, setEditAssessment] = useState<Assessment | null>(null)
   const [filterClass, setFilterClass] = useState("all")
-  const [form, setForm] = useState({ ...EMPTY })
+  const [form, setForm] = useState(getEmpty())
   const [saving, setSaving] = useState(false)
 
   async function load() {
@@ -57,7 +58,7 @@ export default function AssessmentsPage() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault(); setSaving(true)
-    try { await assessmentsApi.create({ ...form, max_score: Number(form.max_score) }); setCreateOpen(false); setForm({ ...EMPTY }); await load() }
+    try { await assessmentsApi.create({ ...form, max_score: Number(form.max_score) }); setCreateOpen(false); setForm(getEmpty()); await load() }
     finally { setSaving(false) }
   }
 

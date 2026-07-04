@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { lessonsApi, classesApi } from "@/lib/api"
 import type { Lesson, Attendance, LessonReport, LessonMaterial, Student } from "@/types"
@@ -22,7 +22,8 @@ interface AttendanceRow { student_id: string; student_name: string; status: stri
 export default function LessonDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
-  const { canEdit } = useAuth()
+  const { canEdit, isTeacher } = useAuth()
+  const canManage = canEdit || isTeacher
 
   const [lesson, setLesson] = useState<Lesson | null>(null)
   const [students, setStudents] = useState<Student[]>([])
@@ -31,6 +32,7 @@ export default function LessonDetailPage() {
   const [report, setReport] = useState<LessonReport | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
 
   const [reportForm, setReportForm] = useState({ summary: "", activities_done: "", homework: "", observations: "" })
   const [materialForm, setMaterialForm] = useState({ type: "link", title: "", content: "" })
@@ -90,6 +92,30 @@ export default function LessonDetailPage() {
   const updateRow = (i: number, k: "status" | "notes", v: string) =>
     setAttendance(rows => rows.map((r, j) => j === i ? { ...r, [k]: v } : r))
 
+  const allSelected = attendance.length > 0 && selected.size === attendance.length
+  const someSelected = selected.size > 0 && !allSelected
+
+  function toggleAll() {
+    if (allSelected) {
+      setSelected(new Set())
+    } else {
+      setSelected(new Set(attendance.map(r => r.student_id)))
+    }
+  }
+
+  function toggleOne(id: string) {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function setStatusForSelected(status: string) {
+    setAttendance(rows => rows.map(r => selected.has(r.student_id) ? { ...r, status } : r))
+  }
+
   if (loading) return <p className="text-muted-foreground text-sm p-6">Carregando…</p>
   if (!lesson) return <p className="text-muted-foreground text-sm p-6">Aula não encontrada.</p>
 
@@ -111,27 +137,74 @@ export default function LessonDetailPage() {
         </TabsList>
 
         <TabsContent value="attendance">
+          {canManage && selected.size > 0 && (
+            <div className="flex items-center gap-2 mb-3 p-2 rounded-md bg-muted border text-sm">
+              <span className="text-muted-foreground mr-1">{selected.size} selecionado(s):</span>
+              {ATTENDANCE_OPTS.map(s => (
+                <Button key={s} size="sm" variant="outline" className="h-7 text-xs" onClick={() => setStatusForSelected(s)}>
+                  {STATUS_LABEL[s]}
+                </Button>
+              ))}
+              <Button size="sm" variant="ghost" className="h-7 text-xs ml-auto" onClick={() => setSelected(new Set())}>
+                Limpar seleção
+              </Button>
+            </div>
+          )}
+
           <div className="rounded-md border bg-card mb-4">
             <Table>
-              <TableHeader><TableRow><TableHead>Aluno</TableHead><TableHead>Status</TableHead><TableHead>Observação</TableHead></TableRow></TableHeader>
+              <TableHeader>
+                <TableRow>
+                  {canManage && (
+                    <TableHead className="w-10">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-gray-300 cursor-pointer"
+                        checked={allSelected}
+                        ref={el => { if (el) el.indeterminate = someSelected }}
+                        onChange={toggleAll}
+                      />
+                    </TableHead>
+                  )}
+                  <TableHead>Aluno</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Observação</TableHead>
+                </TableRow>
+              </TableHeader>
               <TableBody>
                 {attendance.map((r, i) => (
-                  <TableRow key={r.student_id}>
+                  <TableRow key={r.student_id} className={selected.has(r.student_id) ? "bg-muted/50" : ""}>
+                    {canManage && (
+                      <TableCell>
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-gray-300 cursor-pointer"
+                          checked={selected.has(r.student_id)}
+                          onChange={() => toggleOne(r.student_id)}
+                        />
+                      </TableCell>
+                    )}
                     <TableCell className="font-medium">{r.student_name}</TableCell>
                     <TableCell>
-                      <Select value={r.status} onValueChange={v => canEdit && updateRow(i, "status", v)} disabled={!canEdit}>
+                      <Select value={r.status} onValueChange={v => canManage && updateRow(i, "status", v)} disabled={!canManage}>
                         <SelectTrigger className="h-7 w-36 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>{ATTENDANCE_OPTS.map(s => <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>)}</SelectContent>
                       </Select>
                     </TableCell>
-                    <TableCell><Input className="h-7 text-xs" value={r.notes} onChange={e => updateRow(i, "notes", e.target.value)} placeholder="Observação" disabled={!canEdit} /></TableCell>
+                    <TableCell><Input className="h-7 text-xs" value={r.notes} onChange={e => updateRow(i, "notes", e.target.value)} placeholder="Observação" disabled={!canManage} /></TableCell>
                   </TableRow>
                 ))}
-                {attendance.length === 0 && <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-6">Nenhum aluno matriculado nesta turma</TableCell></TableRow>}
+                {attendance.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={canManage ? 4 : 3} className="text-center text-muted-foreground py-6">
+                      Nenhum aluno matriculado nesta turma
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
-          {attendance.length > 0 && canEdit && (
+          {attendance.length > 0 && canManage && (
             <Button onClick={saveAttendance} disabled={saving}>
               <Save className="size-4 mr-2" />{saving ? "Salvando…" : "Salvar presença"}
             </Button>
@@ -140,16 +213,16 @@ export default function LessonDetailPage() {
 
         <TabsContent value="report">
           <form onSubmit={saveReport} className="space-y-4 max-w-2xl">
-            <div className="space-y-1.5"><Label>Resumo da aula</Label><Input value={reportForm.summary} onChange={e => setReportForm(f => ({ ...f, summary: e.target.value }))} placeholder="O que foi feito…" disabled={!canEdit} /></div>
-            <div className="space-y-1.5"><Label>Atividades realizadas</Label><Input value={reportForm.activities_done} onChange={e => setReportForm(f => ({ ...f, activities_done: e.target.value }))} disabled={!canEdit} /></div>
-            <div className="space-y-1.5"><Label>Dever de casa</Label><Input value={reportForm.homework} onChange={e => setReportForm(f => ({ ...f, homework: e.target.value }))} disabled={!canEdit} /></div>
-            <div className="space-y-1.5"><Label>Observações</Label><Input value={reportForm.observations} onChange={e => setReportForm(f => ({ ...f, observations: e.target.value }))} disabled={!canEdit} /></div>
-            {canEdit && <Button type="submit" disabled={saving}><Save className="size-4 mr-2" />{saving ? "Salvando…" : report ? "Atualizar relatório" : "Salvar relatório"}</Button>}
+            <div className="space-y-1.5"><Label>Resumo da aula</Label><Input value={reportForm.summary} onChange={e => setReportForm(f => ({ ...f, summary: e.target.value }))} placeholder="O que foi feito…" disabled={!canManage} /></div>
+            <div className="space-y-1.5"><Label>Atividades realizadas</Label><Input value={reportForm.activities_done} onChange={e => setReportForm(f => ({ ...f, activities_done: e.target.value }))} disabled={!canManage} /></div>
+            <div className="space-y-1.5"><Label>Dever de casa</Label><Input value={reportForm.homework} onChange={e => setReportForm(f => ({ ...f, homework: e.target.value }))} disabled={!canManage} /></div>
+            <div className="space-y-1.5"><Label>Observações</Label><Input value={reportForm.observations} onChange={e => setReportForm(f => ({ ...f, observations: e.target.value }))} disabled={!canManage} /></div>
+            {canManage && <Button type="submit" disabled={saving}><Save className="size-4 mr-2" />{saving ? "Salvando…" : report ? "Atualizar relatório" : "Salvar relatório"}</Button>}
           </form>
         </TabsContent>
 
         <TabsContent value="materials">
-          {canEdit && <form onSubmit={addMaterial} className="flex gap-2 mb-4 items-end">
+          {canManage && <form onSubmit={addMaterial} className="flex gap-2 mb-4 items-end">
             <div className="space-y-1.5">
               <Label>Tipo</Label>
               <Select value={materialForm.type} onValueChange={v => setMaterialForm(f => ({ ...f, type: v }))}>

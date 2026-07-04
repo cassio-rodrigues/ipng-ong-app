@@ -18,7 +18,8 @@ import { toast } from "sonner"
 const CALENDAR_HEADERS = ["Título", "Tipo (holiday/institutional/class_event)", "Início (DD/MM/AAAA HH:MM)", "Fim (DD/MM/AAAA HH:MM)", "Visibilidade (all/teachers/coordinators)", "Descrição"]
 const EVENT_TYPES: Record<string, string> = { holiday: "Feriado", institutional: "Institucional", class_event: "Evento de turma" }
 const VISIBILITY_LABEL: Record<string, string> = { all: "Todos", teachers: "Professores", coordinators: "Coordenadores" }
-const EMPTY = { title: "", event_type: "institutional", start_date: "", end_date: "", description: "", visibility: "all", unit_id: "", is_all_day: "false" }
+const today = () => new Date().toISOString().slice(0, 10)
+const getEmpty = () => ({ title: "", event_type: "institutional", start_date: `${today()}T00:00`, end_date: `${today()}T23:59`, description: "", visibility: "all", unit_id: "", is_all_day: "false" })
 
 export default function CalendarPage() {
   const { canEdit } = useAuth()
@@ -28,7 +29,7 @@ export default function CalendarPage() {
   const [loading, setLoading] = useState(true)
   const [createOpen, setCreateOpen] = useState(false)
   const [editEvent, setEditEvent] = useState<CalendarEvent | null>(null)
-  const [form, setForm] = useState({ ...EMPTY })
+  const [form, setForm] = useState(getEmpty())
   const [saving, setSaving] = useState(false)
 
   async function load() {
@@ -49,7 +50,7 @@ export default function CalendarPage() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault(); setSaving(true)
-    try { await calendarApi.create(toPayload()); setCreateOpen(false); setForm({ ...EMPTY }); await load() }
+    try { await calendarApi.create(toPayload()); setCreateOpen(false); setForm(getEmpty()); await load() }
     finally { setSaving(false) }
   }
 

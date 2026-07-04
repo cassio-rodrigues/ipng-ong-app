@@ -18,7 +18,8 @@ import { toast } from "sonner"
 
 const LESSON_HEADERS = ["Turma (nome)", "Data e hora (DD/MM/AAAA HH:MM)", "Status (scheduled/completed/cancelled)"]
 const STATUS_LABEL: Record<string, string> = { scheduled: "Agendada", completed: "Concluída", cancelled: "Cancelada" }
-const EMPTY = { class_id: "", scheduled_at: "" }
+const today = () => new Date().toISOString().slice(0, 10)
+const getEmpty = () => ({ class_id: "", scheduled_at: `${today()}T00:00` })
 
 export default function LessonsPage() {
   const { canEdit, isTeacher, user } = useAuth()
@@ -30,7 +31,7 @@ export default function LessonsPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [editLesson, setEditLesson] = useState<Lesson | null>(null)
   const [filterClass, setFilterClass] = useState("all")
-  const [form, setForm] = useState({ ...EMPTY })
+  const [form, setForm] = useState(getEmpty())
   const [editStatus, setEditStatus] = useState("")
   const [saving, setSaving] = useState(false)
 
@@ -55,7 +56,7 @@ export default function LessonsPage() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault(); setSaving(true)
-    try { await lessonsApi.create(form); setCreateOpen(false); setForm({ ...EMPTY }); await load() }
+    try { await lessonsApi.create(form); setCreateOpen(false); setForm(getEmpty()); await load() }
     finally { setSaving(false) }
   }
 
