@@ -16,7 +16,7 @@ import { useAuth } from "@/hooks/use-auth"
 import { exportToExcel, downloadTemplate, parseExcel, fmtDate } from "@/lib/excel"
 import { toast } from "sonner"
 
-const EMPTY = { full_name: "", email: "", phone: "", gender: "", birth_date: "", unit_id: "" }
+const EMPTY = { full_name: "", email: "", phone: "", gender: "", birth_date: "", unit_id: "", status: "active" }
 
 const STUDENT_HEADERS = ["Nome completo", "Email", "Telefone", "Nascimento (DD/MM/AAAA)", "Gênero (M/F/O)", "Unidade"]
 
@@ -56,7 +56,7 @@ export default function StudentsPage() {
 
   function openEdit(s: Student) {
     setEditStudent(s)
-    setForm({ full_name: s.full_name ?? "", email: s.email ?? "", phone: s.phone ?? "", gender: s.gender ?? "", birth_date: s.birth_date ? s.birth_date.slice(0, 10) : "", unit_id: s.unit_id ?? "" })
+    setForm({ full_name: s.full_name ?? "", email: s.email ?? "", phone: s.phone ?? "", gender: s.gender ?? "", birth_date: s.birth_date ? s.birth_date.slice(0, 10) : "", unit_id: s.unit_id ?? "", status: s.status ?? "active" })
   }
 
   async function openEnroll(s: Student) {
@@ -76,7 +76,7 @@ export default function StudentsPage() {
   async function handleEdit(e: React.FormEvent) {
     e.preventDefault(); if (!editStudent) return; setSaving(true)
     try {
-      await studentsApi.update(editStudent.id, { ...form, unit_id: form.unit_id || undefined, gender: form.gender || undefined, birth_date: form.birth_date || undefined })
+      await studentsApi.update(editStudent.id, { ...form, unit_id: form.unit_id || undefined, gender: form.gender || undefined, birth_date: form.birth_date || undefined, status: form.status })
       setEditStudent(null); await load()
     } finally { setSaving(false) }
   }
@@ -140,7 +140,7 @@ export default function StudentsPage() {
     e.target.value = ""
   }
 
-  const formFields = () => (
+  const formFields = (isEdit = false) => (
     <div className="space-y-4 mt-2">
       <div className="space-y-1.5"><Label>Nome completo</Label><Input value={form.full_name} onChange={e => F("full_name", e.target.value)} required /></div>
       <div className="grid grid-cols-2 gap-4">
@@ -161,12 +161,26 @@ export default function StudentsPage() {
           </Select>
         </div>
       </div>
-      <div className="space-y-1.5">
-        <Label>Unidade</Label>
-        <Select value={form.unit_id} onValueChange={v => F("unit_id", v)}>
-          <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
-          <SelectContent>{units.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent>
-        </Select>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label>Unidade</Label>
+          <Select value={form.unit_id} onValueChange={v => F("unit_id", v)}>
+            <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+            <SelectContent>{units.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+        {isEdit && (
+          <div className="space-y-1.5">
+            <Label>Status</Label>
+            <Select value={form.status} onValueChange={v => F("status", v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Ativo</SelectItem>
+                <SelectItem value="inactive">Inativo</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -202,7 +216,7 @@ export default function StudentsPage() {
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Editar aluno</DialogTitle></DialogHeader>
           <form onSubmit={handleEdit}>
-            {formFields()}
+            {formFields(true)}
             <div className="flex justify-end gap-2 pt-4">
               <Button type="button" variant="outline" onClick={() => setEditStudent(null)}>Cancelar</Button>
               <Button type="submit" disabled={saving}>{saving ? "Salvando…" : "Salvar"}</Button>

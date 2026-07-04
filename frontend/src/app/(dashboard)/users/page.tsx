@@ -18,7 +18,7 @@ import { toast } from "sonner"
 const USER_HEADERS = ["Nome", "Email", "Senha", "Perfil (admin/coordinator/teacher)", "Telefone", "Nascimento (DD/MM/AAAA)", "Gênero (M/F/O)"]
 
 const ROLE_LABEL: Record<string, string> = { admin: "Admin", coordinator: "Coordenador", teacher: "Professor" }
-const EMPTY = { name: "", email: "", password: "", role: "teacher", telefone: "", gender: "", birth_date: "" }
+const EMPTY = { name: "", email: "", password: "", role: "teacher", telefone: "", gender: "", birth_date: "", status: "active" }
 
 export default function UsersPage() {
   const { canEdit } = useAuth()
@@ -42,7 +42,7 @@ export default function UsersPage() {
 
   function openEdit(u: User) {
     setEditUser(u)
-    setForm({ name: u.name ?? "", email: u.email ?? "", password: "", role: u.role ?? "teacher", telefone: u.telefone ?? "", gender: u.gender ?? "", birth_date: u.birth_date ? u.birth_date.slice(0, 10) : "" })
+    setForm({ name: u.name ?? "", email: u.email ?? "", password: "", role: u.role ?? "teacher", telefone: u.telefone ?? "", gender: u.gender ?? "", birth_date: u.birth_date ? u.birth_date.slice(0, 10) : "", status: u.status ?? "active" })
   }
 
   async function handleCreate(e: React.FormEvent) {
@@ -56,7 +56,7 @@ export default function UsersPage() {
   async function handleEdit(e: React.FormEvent) {
     e.preventDefault(); if (!editUser) return; setSaving(true)
     try {
-      const payload: Record<string, unknown> = { name: form.name, email: form.email, role: form.role, telefone: form.telefone, gender: form.gender || undefined, birth_date: form.birth_date || undefined }
+      const payload: Record<string, unknown> = { name: form.name, email: form.email, role: form.role, telefone: form.telefone, status: form.status, gender: form.gender || undefined, birth_date: form.birth_date || undefined }
       if (form.password) payload.password = form.password
       await usersApi.update(editUser.id, payload)
       setEditUser(null); await load()
@@ -142,16 +142,30 @@ export default function UsersPage() {
           </Select>
         </div>
       </div>
-      <div className="space-y-1.5">
-        <Label>Perfil</Label>
-        <Select value={form.role} onValueChange={v => F("role", v)}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="admin">Admin</SelectItem>
-            <SelectItem value="coordinator">Coordenador</SelectItem>
-            <SelectItem value="teacher">Professor</SelectItem>
-          </SelectContent>
-        </Select>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label>Perfil</Label>
+          <Select value={form.role} onValueChange={v => F("role", v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="admin">Admin</SelectItem>
+              <SelectItem value="coordinator">Coordenador</SelectItem>
+              <SelectItem value="teacher">Professor</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {isEdit && (
+          <div className="space-y-1.5">
+            <Label>Status</Label>
+            <Select value={form.status} onValueChange={v => F("status", v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Ativo</SelectItem>
+                <SelectItem value="inactive">Inativo</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
     </div>
   )
