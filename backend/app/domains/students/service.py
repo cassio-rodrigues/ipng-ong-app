@@ -30,7 +30,10 @@ async def get_student(db: AsyncSession, student_id: uuid.UUID) -> Student | None
 
 
 async def create_student(db: AsyncSession, data: StudentCreate) -> Student:
-    student = Student(**data.model_dump())
+    payload = data.model_dump()
+    if payload.get("full_name"):
+        payload["full_name"] = payload["full_name"].strip().title()
+    student = Student(**payload)
     db.add(student)
     await db.commit()
     await db.refresh(student)
@@ -39,6 +42,8 @@ async def create_student(db: AsyncSession, data: StudentCreate) -> Student:
 
 async def update_student(db: AsyncSession, student: Student, data: StudentUpdate) -> Student:
     for field, value in data.model_dump(exclude_none=True).items():
+        if field == "full_name" and value:
+            value = value.strip().title()
         setattr(student, field, value)
     await db.commit()
     await db.refresh(student)

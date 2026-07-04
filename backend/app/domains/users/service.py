@@ -27,7 +27,7 @@ async def get_user(db: AsyncSession, user_id: uuid.UUID) -> User | None:
 
 async def create_user(db: AsyncSession, data: UserCreate) -> User:
     user = User(
-        name=data.name,
+        name=data.name.strip().title() if data.name else data.name,
         email=data.email,
         telefone=data.telefone,
         role=data.role,
@@ -44,6 +44,8 @@ async def create_user(db: AsyncSession, data: UserCreate) -> User:
 
 async def update_user(db: AsyncSession, user: User, data: UserUpdate) -> User:
     for field, value in data.model_dump(exclude_none=True, exclude={"password"}).items():
+        if field == "name" and value:
+            value = value.strip().title()
         setattr(user, field, value)
     if data.password:
         user.password_hash = hash_password(data.password)
