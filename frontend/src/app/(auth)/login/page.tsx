@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/use-auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 
 export default function LoginPage() {
   const { login } = useAuth()
@@ -30,10 +30,9 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/40 px-4">
       <Card className="w-full max-w-sm">
-        <CardHeader className="text-center items-center">
+        <CardHeader className="flex flex-col items-center pb-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="IPNG" className="h-16 w-auto object-contain mb-2" />
-          <CardDescription>Gestão Educacional — Acesso ao painel</CardDescription>
+          <img src="/logo.png" alt="IPNG" className="h-20 w-auto object-contain" />
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
