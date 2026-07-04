@@ -75,7 +75,7 @@ export default function ClassesPage() {
   const F = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
   const unitMap = Object.fromEntries(units.map(u => [u.id, u.name]))
   const teacherMap = Object.fromEntries(teachers.map(t => [t.id, t.name]))
-  const unitNameMap = Object.fromEntries(units.map(u => [u.name.toLowerCase(), u.id]))
+  const unitNameMap = Object.fromEntries(units.map(u => [u.name?.toLowerCase() ?? "", u.id]))
   const teacherEmailMap = Object.fromEntries(teachers.map(t => [t.email?.toLowerCase() ?? "", t.id]))
   const bookTitleMap = Object.fromEntries(books.map(b => [b.title?.toLowerCase() ?? "", b.id]))
 
