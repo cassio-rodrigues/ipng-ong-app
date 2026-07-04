@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -17,10 +18,12 @@ import {
   ScrollText,
   LogOut,
   BookMarked,
+  Menu,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/hooks/use-auth"
 import { Button } from "@/components/ui/button"
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -38,12 +41,12 @@ const navItems = [
   { href: "/audit", label: "Auditoria", icon: ScrollText },
 ]
 
-export function Sidebar() {
+function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
   const { user, logout } = useAuth()
 
   return (
-    <aside className="flex flex-col w-64 min-h-screen bg-sidebar border-r border-sidebar-border">
+    <div className="flex flex-col h-full">
       <div className="px-6 py-4 border-b border-sidebar-border">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo.png" alt="IPNG" className="h-12 w-auto object-contain" />
@@ -56,6 +59,7 @@ export function Sidebar() {
             <Link
               key={href}
               href={href}
+              onClick={onNavigate}
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
                 active
@@ -85,6 +89,37 @@ export function Sidebar() {
           Sair
         </Button>
       </div>
+    </div>
+  )
+}
+
+export function Sidebar() {
+  return (
+    <aside className="hidden md:flex flex-col w-64 min-h-screen bg-sidebar border-r border-sidebar-border shrink-0">
+      <NavLinks />
     </aside>
+  )
+}
+
+export function MobileHeader() {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <>
+      <header className="md:hidden flex items-center gap-3 px-4 py-3 bg-sidebar border-b border-sidebar-border sticky top-0 z-40">
+        <Button variant="ghost" size="icon" onClick={() => setOpen(true)} className="text-sidebar-foreground">
+          <Menu className="size-5" />
+        </Button>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.png" alt="IPNG" className="h-8 w-auto object-contain" />
+      </header>
+
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetContent side="left" className="p-0 w-72 bg-sidebar border-sidebar-border" aria-describedby={undefined}>
+          <SheetTitle className="sr-only">Menu</SheetTitle>
+          <NavLinks onNavigate={() => setOpen(false)} />
+        </SheetContent>
+      </Sheet>
+    </>
   )
 }

@@ -153,7 +153,7 @@ export default function UnitsPage() {
       </Dialog>
 
       {loading ? <p className="text-muted-foreground text-sm">Carregando…</p> : (
-        <div className="rounded-md border bg-card">
+        <div className="rounded-md border bg-card overflow-x-auto">
           <Table>
             <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Endereço</TableHead><TableHead>Coordenador</TableHead><TableHead>Status</TableHead><TableHead className="w-20" /></TableRow></TableHeader>
             <TableBody>

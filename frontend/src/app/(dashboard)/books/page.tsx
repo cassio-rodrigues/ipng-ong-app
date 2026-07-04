@@ -156,7 +156,7 @@ export default function BooksPage() {
       </Dialog>
 
       {loading ? <p className="text-muted-foreground text-sm">Carregando…</p> : (
-        <div className="rounded-md border bg-card">
+        <div className="rounded-md border bg-card overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>

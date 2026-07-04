@@ -243,7 +243,7 @@ export default function StudentsPage() {
       </div>
 
       {loading ? <p className="text-muted-foreground text-sm">Carregando…</p> : (
-        <div className="rounded-md border bg-card">
+        <div className="rounded-md border bg-card overflow-x-auto">
           <Table>
             <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Email</TableHead><TableHead>Telefone</TableHead><TableHead>Nascimento</TableHead><TableHead>Status</TableHead><TableHead className="w-28" /></TableRow></TableHeader>
             <TableBody>

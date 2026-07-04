@@ -238,7 +238,7 @@ export default function LessonDetailPage() {
             <div className="space-y-1.5 flex-1"><Label>Conteúdo / URL</Label><Input value={materialForm.content} onChange={e => setMaterialForm(f => ({ ...f, content: e.target.value }))} /></div>
             <Button type="submit" disabled={saving}>Adicionar</Button>
           </form>}
-          <div className="rounded-md border bg-card">
+          <div className="rounded-md border bg-card overflow-x-auto">
             <Table>
               <TableHeader><TableRow><TableHead>Tipo</TableHead><TableHead>Título</TableHead><TableHead>Conteúdo</TableHead></TableRow></TableHeader>
               <TableBody>

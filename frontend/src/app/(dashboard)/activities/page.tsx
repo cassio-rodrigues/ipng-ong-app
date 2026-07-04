@@ -240,7 +240,7 @@ export default function ActivitiesPage() {
       </div>
 
       {loading ? <p className="text-muted-foreground text-sm">Carregando…</p> : (
-        <div className="rounded-md border bg-card">
+        <div className="rounded-md border bg-card overflow-x-auto">
           <Table>
             <TableHeader><TableRow><TableHead>Título</TableHead><TableHead>Turma</TableHead><TableHead>Tipo</TableHead><TableHead>Data</TableHead><TableHead className="w-24" /></TableRow></TableHeader>
             <TableBody>

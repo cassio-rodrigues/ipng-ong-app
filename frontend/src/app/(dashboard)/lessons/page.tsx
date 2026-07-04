@@ -187,7 +187,7 @@ export default function LessonsPage() {
       </div>
 
       {loading ? <p className="text-muted-foreground text-sm">Carregando…</p> : (
-        <div className="rounded-md border bg-card">
+        <div className="rounded-md border bg-card overflow-x-auto">
           <Table>
             <TableHeader><TableRow><TableHead>Turma</TableHead><TableHead>Data agendada</TableHead><TableHead>Status</TableHead><TableHead>Relatório</TableHead><TableHead className="w-28" /></TableRow></TableHeader>
             <TableBody>
