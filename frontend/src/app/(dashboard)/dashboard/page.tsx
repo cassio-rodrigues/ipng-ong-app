@@ -87,13 +87,19 @@ function MonthCalendar() {
   ]
   while (cells.length % 7 !== 0) cells.push(null)
 
+  // Parse YYYY-MM-DD without timezone shift by using local date constructor
+  function parseLocalDate(iso: string) {
+    const [y, m, d] = iso.slice(0, 10).split("-").map(Number)
+    return new Date(y, m - 1, d)
+  }
+
   const eventsByDay: Record<number, CalendarEvent[]> = {}
   for (const ev of events) {
-    const start = ev.start_date ? new Date(ev.start_date) : null
-    const end = ev.end_date ? new Date(ev.end_date) : (start ? new Date(start) : null)
-    if (!start) continue
+    if (!ev.start_date) continue
+    const start = parseLocalDate(ev.start_date)
+    const end = ev.end_date ? parseLocalDate(ev.end_date) : new Date(start)
     const cursor = new Date(start)
-    while (cursor <= (end ?? start)) {
+    while (cursor <= end) {
       if (cursor.getFullYear() === year && cursor.getMonth() === month) {
         const d = cursor.getDate()
         eventsByDay[d] = [...(eventsByDay[d] ?? []), ev]
