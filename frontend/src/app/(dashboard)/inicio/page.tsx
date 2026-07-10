@@ -42,12 +42,7 @@ export default function InicioPage() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold">Olá, {user?.name?.split(" ")[0]} 👋</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Bem-vindo(a) de volta. O que vamos fazer hoje?
-        </p>
-      </div>
+      <h1 className="text-2xl font-bold mb-6">Olá, {user?.name?.split(" ")[0]} 👋</h1>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
         {items.map(({ href, label, icon: Icon, color }) => (
