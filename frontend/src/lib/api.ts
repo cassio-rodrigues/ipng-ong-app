@@ -112,7 +112,7 @@ export const classesApi = {
 
 // Students
 export const studentsApi = {
-  list: (params?: { unit_id?: string; status?: string }) =>
+  list: (params?: { unit_id?: string; status?: string; teacher_id?: string }) =>
     api.get("/students", { params }),
   get: (id: string) => api.get(`/students/${id}`),
   create: (data: object) => api.post("/students", data),
