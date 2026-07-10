@@ -49,3 +49,13 @@ def require_role(*roles: str):
         return current_user
 
     return _checker
+
+
+def _is_privileged(user) -> bool:
+    return user.role in ("admin", "coordinator")
+
+
+def check_owner(owner_id: uuid.UUID | None, current_user) -> None:
+    """Levanta 403 se o usuário não é admin/coordinator e não é o dono do recurso."""
+    if not _is_privileged(current_user) and owner_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissão negada")

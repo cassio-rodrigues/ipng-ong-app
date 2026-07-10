@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.deps import get_current_user, require_role
+from app.core.deps import check_owner, get_current_user, require_role
 from app.domains.lessons.schemas import (
     LessonCreate,
     LessonMaterialBase,
@@ -51,24 +51,27 @@ async def get_one(lesson_id: uuid.UUID, db: AsyncSession = Depends(get_db), _=De
 
 
 @router.patch("/{lesson_id}", response_model=LessonResponse)
-async def update(lesson_id: uuid.UUID, body: LessonUpdate, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
+async def update(lesson_id: uuid.UUID, body: LessonUpdate, db: AsyncSession = Depends(get_db), current_user=Depends(get_current_user)):
     lesson = await get_lesson(db, lesson_id)
     if not lesson:
         raise HTTPException(status_code=404, detail="Aula não encontrada")
+    check_owner(lesson.teacher_id, current_user)
     return await update_lesson(db, lesson, body)
 
 
 @router.post("/{lesson_id}/report", response_model=LessonReportResponse)
-async def create_report(lesson_id: uuid.UUID, body: LessonReportBase, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
+async def create_report(lesson_id: uuid.UUID, body: LessonReportBase, db: AsyncSession = Depends(get_db), current_user=Depends(get_current_user)):
     lesson = await get_lesson(db, lesson_id)
     if not lesson:
         raise HTTPException(status_code=404, detail="Aula não encontrada")
+    check_owner(lesson.teacher_id, current_user)
     return await upsert_report(db, lesson_id, body)
 
 
 @router.post("/{lesson_id}/materials", response_model=LessonMaterialResponse, status_code=status.HTTP_201_CREATED)
-async def add_material_route(lesson_id: uuid.UUID, body: LessonMaterialBase, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
+async def add_material_route(lesson_id: uuid.UUID, body: LessonMaterialBase, db: AsyncSession = Depends(get_db), current_user=Depends(get_current_user)):
     lesson = await get_lesson(db, lesson_id)
     if not lesson:
         raise HTTPException(status_code=404, detail="Aula não encontrada")
+    check_owner(lesson.teacher_id, current_user)
     return await add_material(db, lesson_id, body)

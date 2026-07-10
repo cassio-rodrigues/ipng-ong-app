@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.deps import get_current_user
+from app.core.deps import require_role
 from app.domains.audit.schemas import AuditLogResponse
 from app.models.audit import AuditLog
 
@@ -19,7 +19,7 @@ async def list_logs(
     entity_type: str | None = None,
     user_id: str | None = None,
     db: AsyncSession = Depends(get_db),
-    _=Depends(get_current_user),
+    _=Depends(require_role("admin")),
 ):
     q = select(AuditLog).order_by(AuditLog.created_at.desc()).offset(skip).limit(limit)
     if entity_type:

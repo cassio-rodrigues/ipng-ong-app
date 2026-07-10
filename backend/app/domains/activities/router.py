@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.deps import get_current_user
+from app.core.deps import check_owner, get_current_user
 from app.domains.activities.schemas import (
     ActivityCreate,
     ActivityResponse,
@@ -56,10 +56,11 @@ async def get_one(activity_id: uuid.UUID, db: AsyncSession = Depends(get_db), _=
 
 
 @router.patch("/activities/{activity_id}", response_model=ActivityResponse)
-async def update(activity_id: uuid.UUID, body: ActivityUpdate, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
+async def update(activity_id: uuid.UUID, body: ActivityUpdate, db: AsyncSession = Depends(get_db), current_user=Depends(get_current_user)):
     activity = await get_activity(db, activity_id)
     if not activity:
         raise HTTPException(status_code=404, detail="Atividade não encontrada")
+    check_owner(activity.created_by, current_user)
     return await update_activity(db, activity, body)
 
 
@@ -93,7 +94,7 @@ async def update_highlight_route(
     highlight_id: uuid.UUID,
     body: HighlightUpdate,
     db: AsyncSession = Depends(get_db),
-    _=Depends(get_current_user),
+    current_user=Depends(get_current_user),
 ):
     from app.models.activity import StudentHighlight
     from sqlalchemy import select
@@ -102,4 +103,5 @@ async def update_highlight_route(
     highlight = result.scalar_one_or_none()
     if not highlight:
         raise HTTPException(status_code=404, detail="Destaque não encontrado")
+    check_owner(highlight.teacher_id, current_user)
     return await update_highlight(db, highlight, body)

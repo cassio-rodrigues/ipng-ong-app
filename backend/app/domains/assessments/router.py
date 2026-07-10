@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.deps import get_current_user, require_role
+from app.core.deps import check_owner, get_current_user, require_role
 from app.domains.assessments.schemas import AssessmentCreate, AssessmentResponse, AssessmentUpdate, GradeBulkCreate, StudentGradeResponse
 from app.domains.assessments.service import bulk_grades, create_assessment, get_assessment, list_assessments, update_assessment
 
@@ -43,16 +43,18 @@ async def get_one(assessment_id: uuid.UUID, db: AsyncSession = Depends(get_db), 
 
 
 @router.patch("/{assessment_id}", response_model=AssessmentResponse)
-async def update(assessment_id: uuid.UUID, body: AssessmentUpdate, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
+async def update(assessment_id: uuid.UUID, body: AssessmentUpdate, db: AsyncSession = Depends(get_db), current_user=Depends(get_current_user)):
     assessment = await get_assessment(db, assessment_id)
     if not assessment:
         raise HTTPException(status_code=404, detail="Avaliação não encontrada")
+    check_owner(assessment.created_by, current_user)
     return await update_assessment(db, assessment, body)
 
 
 @router.post("/{assessment_id}/grades", response_model=list[StudentGradeResponse])
-async def post_grades(assessment_id: uuid.UUID, body: GradeBulkCreate, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
+async def post_grades(assessment_id: uuid.UUID, body: GradeBulkCreate, db: AsyncSession = Depends(get_db), current_user=Depends(get_current_user)):
     assessment = await get_assessment(db, assessment_id)
     if not assessment:
         raise HTTPException(status_code=404, detail="Avaliação não encontrada")
+    check_owner(assessment.created_by, current_user)
     return await bulk_grades(db, assessment_id, body)

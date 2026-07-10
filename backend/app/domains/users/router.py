@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.deps import get_current_user, require_role
+from app.core.deps import check_owner, get_current_user, require_role
 from app.domains.users.schemas import TeacherProfileBase, TeacherProfileResponse, UserCreate, UserResponse, UserUpdate
 from app.domains.users.service import (
     create_user,
@@ -26,7 +26,7 @@ async def get_users(
     limit: int = 50,
     status: str | None = None,
     db: AsyncSession = Depends(get_db),
-    _=Depends(get_current_user),
+    _=Depends(require_role("admin", "coordinator")),
 ):
     return await list_users(db, skip, limit, status)
 
@@ -87,6 +87,7 @@ async def upsert_profile(
     user_id: uuid.UUID,
     body: TeacherProfileBase,
     db: AsyncSession = Depends(get_db),
-    _=Depends(get_current_user),
+    current_user=Depends(get_current_user),
 ):
+    check_owner(user_id, current_user)
     return await upsert_teacher_profile(db, user_id, body.model_dump())
