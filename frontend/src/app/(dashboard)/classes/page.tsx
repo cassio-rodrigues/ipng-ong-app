@@ -18,7 +18,7 @@ import { toast } from "sonner"
 const CLASS_HEADERS = ["Nome", "Nível (A1/A2/B1/B2/C1/C2)", "Unidade", "Professor (email)", "Livro", "Início (DD/MM/AAAA)", "Fim (DD/MM/AAAA)"]
 
 const LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"]
-const EMPTY = { name: "", level: "", unit_id: "", main_teacher_id: "", book_id: "", start_date: "", end_date: "" }
+const EMPTY = { name: "", level: "", unit_id: "", main_teacher_id: "", book_id: "", start_date: "", end_date: "", status: "active" }
 
 export default function ClassesPage() {
   const { canEdit } = useAuth()
@@ -27,6 +27,7 @@ export default function ClassesPage() {
   const [units, setUnits] = useState<Unit[]>([])
   const [teachers, setTeachers] = useState<User[]>([])
   const [books, setBooks] = useState<Book[]>([])
+  const [filterStatus, setFilterStatus] = useState("all")
   const [loading, setLoading] = useState(true)
   const [createOpen, setCreateOpen] = useState(false)
   const [editClass, setEditClass] = useState<Class_ | null>(null)
@@ -35,8 +36,10 @@ export default function ClassesPage() {
 
   async function load() {
     try {
+      const classParams: Record<string, string> = {}
+      if (filterStatus !== "all") classParams.status = filterStatus
       const [cRes, uRes, usrRes, bRes] = await Promise.all([
-        classesApi.list(), unitsApi.list(), usersApi.list({ limit: 200 }), booksApi.list(),
+        classesApi.list(classParams), unitsApi.list(), usersApi.list({ limit: 200 }), booksApi.list(),
       ])
       setClasses(cRes.data); setUnits(uRes.data)
       setTeachers(usrRes.data.filter((u: User) => u.role === "teacher" || u.role === "coordinator"))
@@ -44,11 +47,11 @@ export default function ClassesPage() {
     } finally { setLoading(false) }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [filterStatus])
 
   function openEdit(c: Class_) {
     setEditClass(c)
-    setForm({ name: c.name ?? "", level: c.level ?? "", unit_id: c.unit_id ?? "", main_teacher_id: c.main_teacher_id ?? "", book_id: c.book_id ?? "", start_date: c.start_date ? c.start_date.slice(0, 10) : "", end_date: c.end_date ? c.end_date.slice(0, 10) : "" })
+    setForm({ name: c.name ?? "", level: c.level ?? "", unit_id: c.unit_id ?? "", main_teacher_id: c.main_teacher_id ?? "", book_id: c.book_id ?? "", start_date: c.start_date ? c.start_date.slice(0, 10) : "", end_date: c.end_date ? c.end_date.slice(0, 10) : "", status: c.status ?? "active" })
   }
 
   async function handleCreate(e: React.FormEvent) {
@@ -62,7 +65,7 @@ export default function ClassesPage() {
   async function handleEdit(e: React.FormEvent) {
     e.preventDefault(); if (!editClass) return; setSaving(true)
     try {
-      await classesApi.update(editClass.id, { name: form.name, level: form.level || undefined, unit_id: form.unit_id || undefined, main_teacher_id: form.main_teacher_id || undefined, book_id: form.book_id || undefined, start_date: form.start_date || undefined, end_date: form.end_date || undefined })
+      await classesApi.update(editClass.id, { name: form.name, level: form.level || undefined, unit_id: form.unit_id || undefined, main_teacher_id: form.main_teacher_id || undefined, book_id: form.book_id || undefined, start_date: form.start_date || undefined, end_date: form.end_date || undefined, status: form.status })
       setEditClass(null); await load()
     } finally { setSaving(false) }
   }
@@ -117,7 +120,7 @@ export default function ClassesPage() {
     e.target.value = ""
   }
 
-  const formFields = () => (
+  const formFields = (isEdit = false) => (
     <div className="space-y-4 mt-2">
       <div className="space-y-1.5"><Label>Nome da turma</Label><Input value={form.name} onChange={e => F("name", e.target.value)} required /></div>
       <div className="grid grid-cols-2 gap-4">
@@ -154,6 +157,18 @@ export default function ClassesPage() {
         <div className="space-y-1.5"><Label>Início</Label><Input type="date" value={form.start_date} onChange={e => F("start_date", e.target.value)} /></div>
         <div className="space-y-1.5"><Label>Fim</Label><Input type="date" value={form.end_date} onChange={e => F("end_date", e.target.value)} /></div>
       </div>
+      {isEdit && (
+        <div className="space-y-1.5">
+          <Label>Status</Label>
+          <Select value={form.status} onValueChange={v => F("status", v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="active">Ativa</SelectItem>
+              <SelectItem value="inactive">Inativa</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
     </div>
   )
 
@@ -188,7 +203,7 @@ export default function ClassesPage() {
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Editar turma</DialogTitle></DialogHeader>
           <form onSubmit={handleEdit}>
-            {formFields()}
+            {formFields(true)}
             <div className="flex justify-end gap-2 pt-4">
               <Button type="button" variant="outline" onClick={() => setEditClass(null)}>Cancelar</Button>
               <Button type="submit" disabled={saving}>{saving ? "Salvando…" : "Salvar"}</Button>
@@ -196,6 +211,17 @@ export default function ClassesPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <div className="flex gap-3 mb-4">
+        <Select value={filterStatus} onValueChange={setFilterStatus}>
+          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas</SelectItem>
+            <SelectItem value="active">Ativas</SelectItem>
+            <SelectItem value="inactive">Inativas</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
       {loading ? <p className="text-muted-foreground text-sm">Carregando…</p> : (
         <div className="rounded-md border bg-card overflow-x-auto">
