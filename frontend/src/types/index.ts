@@ -202,6 +202,21 @@ export interface StudentHighlight {
   description: string | null
   highlight_type: string | null
   created_at: string | null
+  student_occupation: string | null
+  reason_primary: string | null
+  reason_secondary: string | null
+  level_assessment: string | null
+  participation_spontaneous: string | null
+  class_focus: string | null
+  interest_beyond_class: string | null
+  speaks_despite_errors: string | null
+  curiosity_level: string | null
+  homework_rate: string | null
+  english_outside_contact: string | null
+  english_outside_channels: string | null
+  self_confidence: string | null
+  previously_highlighted: string | null
+  teacher_overall_perception: string | null
 }
 
 export interface TokenResponse {

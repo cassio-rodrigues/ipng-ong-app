@@ -57,6 +57,21 @@ class HighlightBase(BaseModel):
     title: str | None = None
     description: str | None = None
     highlight_type: str | None = None
+    student_occupation: str | None = None
+    reason_primary: str | None = None
+    reason_secondary: str | None = None
+    level_assessment: str | None = None
+    participation_spontaneous: str | None = None
+    class_focus: str | None = None
+    interest_beyond_class: str | None = None
+    speaks_despite_errors: str | None = None
+    curiosity_level: str | None = None
+    homework_rate: str | None = None
+    english_outside_contact: str | None = None
+    english_outside_channels: str | None = None
+    self_confidence: str | None = None
+    previously_highlighted: str | None = None
+    teacher_overall_perception: str | None = None
 
 
 class HighlightCreate(HighlightBase):
@@ -67,6 +82,21 @@ class HighlightUpdate(BaseModel):
     title: str | None = None
     description: str | None = None
     highlight_type: str | None = None
+    student_occupation: str | None = None
+    reason_primary: str | None = None
+    reason_secondary: str | None = None
+    level_assessment: str | None = None
+    participation_spontaneous: str | None = None
+    class_focus: str | None = None
+    interest_beyond_class: str | None = None
+    speaks_despite_errors: str | None = None
+    curiosity_level: str | None = None
+    homework_rate: str | None = None
+    english_outside_contact: str | None = None
+    english_outside_channels: str | None = None
+    self_confidence: str | None = None
+    previously_highlighted: str | None = None
+    teacher_overall_perception: str | None = None
 
 
 class HighlightResponse(HighlightBase):

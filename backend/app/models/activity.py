@@ -52,6 +52,22 @@ class StudentHighlight(Base):
     description: Mapped[str | None] = mapped_column(Text)
     highlight_type: Mapped[str | None] = mapped_column(String)
     created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # Formulário estruturado de destaque
+    student_occupation: Mapped[str | None] = mapped_column(String)
+    reason_primary: Mapped[str | None] = mapped_column(String)
+    reason_secondary: Mapped[str | None] = mapped_column(String)
+    level_assessment: Mapped[str | None] = mapped_column(String)
+    participation_spontaneous: Mapped[str | None] = mapped_column(String)
+    class_focus: Mapped[str | None] = mapped_column(String)
+    interest_beyond_class: Mapped[str | None] = mapped_column(String)
+    speaks_despite_errors: Mapped[str | None] = mapped_column(String)
+    curiosity_level: Mapped[str | None] = mapped_column(String)
+    homework_rate: Mapped[str | None] = mapped_column(String)
+    english_outside_contact: Mapped[str | None] = mapped_column(String)
+    english_outside_channels: Mapped[str | None] = mapped_column(String)
+    self_confidence: Mapped[str | None] = mapped_column(String)
+    previously_highlighted: Mapped[str | None] = mapped_column(String)
+    teacher_overall_perception: Mapped[str | None] = mapped_column(String)
 
     student: Mapped["Student"] = relationship("Student", foreign_keys=[student_id], lazy="selectin")  # type: ignore[name-defined]
     class_: Mapped["Class_ | None"] = relationship("Class_", foreign_keys=[class_id], lazy="selectin")  # type: ignore[name-defined]
