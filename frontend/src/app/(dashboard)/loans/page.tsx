@@ -43,8 +43,8 @@ export default function LoansPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [returning, setReturning] = useState<string | null>(null)
   const [filterStatus, setFilterStatus] = useState("all")
-  const [filterStudent, setFilterStudent] = useState("all")
-  const [filterBook, setFilterBook] = useState("all")
+  const [searchStudent, setSearchStudent] = useState("")
+  const [searchBook, setSearchBook] = useState("")
   const [form, setForm] = useState({ student_id: "", book_id: "", due_date: "", notes: "" })
   const [saving, setSaving] = useState(false)
 
@@ -52,8 +52,6 @@ export default function LoansPage() {
     try {
       const params: Record<string, string> = {}
       if (filterStatus !== "all") params.status = filterStatus
-      if (filterStudent !== "all") params.student_id = filterStudent
-      if (filterBook !== "all") params.book_id = filterBook
       const [lRes, sRes, bRes] = await Promise.all([
         loansApi.list(params),
         studentsApi.list({}),
@@ -65,7 +63,7 @@ export default function LoansPage() {
     } finally { setLoading(false) }
   }
 
-  useEffect(() => { load() }, [filterStatus, filterStudent, filterBook])
+  useEffect(() => { load() }, [filterStatus])
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -101,6 +99,14 @@ export default function LoansPage() {
   const fmt = (d: string | null) => d ? new Date(d).toLocaleDateString("pt-BR") : "—"
   const studentName = (id: string) => students.find(s => s.id === id)?.full_name ?? "—"
   const bookTitle = (id: string) => books.find(b => b.id === id)?.title ?? "—"
+
+  const visibleLoans = loans.filter(l => {
+    const name = (l.student?.full_name ?? studentName(l.student_id)).toLowerCase()
+    const title = (l.book?.title ?? bookTitle(l.book_id)).toLowerCase()
+    if (searchStudent && !name.includes(searchStudent.toLowerCase())) return false
+    if (searchBook && !title.includes(searchBook.toLowerCase())) return false
+    return true
+  })
 
   const activeCount = loans.filter(l => computedStatus(l) === "active").length
   const overdueCount = loans.filter(l => computedStatus(l) === "overdue").length
@@ -190,29 +196,18 @@ export default function LoansPage() {
           </SelectContent>
         </Select>
 
-        <Select value={filterStudent} onValueChange={setFilterStudent}>
-          <SelectTrigger className="w-52">
-            <SelectValue placeholder="Filtrar por aluno" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os alunos</SelectItem>
-            {students.map(s => (
-              <SelectItem key={s.id} value={s.id}>{s.full_name ?? s.id}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select value={filterBook} onValueChange={setFilterBook}>
-          <SelectTrigger className="w-52">
-            <SelectValue placeholder="Filtrar por livro" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os livros</SelectItem>
-            {books.map(b => (
-              <SelectItem key={b.id} value={b.id}>{b.title ?? b.id}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Input
+          placeholder="Buscar aluno…"
+          value={searchStudent}
+          onChange={e => setSearchStudent(e.target.value)}
+          className="w-48"
+        />
+        <Input
+          placeholder="Buscar livro…"
+          value={searchBook}
+          onChange={e => setSearchBook(e.target.value)}
+          className="w-48"
+        />
       </div>
 
       {loading ? (
@@ -232,7 +227,7 @@ export default function LoansPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loans.map(loan => {
+              {visibleLoans.map(loan => {
                 const status = computedStatus(loan)
                 const isOverdue = status === "overdue"
                 return (
@@ -283,7 +278,7 @@ export default function LoansPage() {
                   </TableRow>
                 )
               })}
-              {loans.length === 0 && (
+              {visibleLoans.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center text-muted-foreground py-10">
                     Nenhum empréstimo encontrado
