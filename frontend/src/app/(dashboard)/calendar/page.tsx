@@ -16,6 +16,15 @@ import { exportToExcel, downloadTemplate, parseExcel, fmtDateTime } from "@/lib/
 import { toast } from "sonner"
 
 const CALENDAR_HEADERS = ["Título", "Tipo (holiday/institutional/class_event)", "Início (DD/MM/AAAA HH:MM)", "Fim (DD/MM/AAAA HH:MM)", "Visibilidade (all/teachers/coordinators)", "Descrição"]
+
+// Exibe data/hora do ISO sem converter para timezone local (evita deslocamento UTC-3)
+function fmtIso(iso: string | null): string {
+  if (!iso) return "—"
+  const [date, time] = iso.slice(0, 16).split("T")
+  const [y, m, d] = date.split("-")
+  if (!time || time === "00:00") return `${d}/${m}/${y}`
+  return `${d}/${m}/${y} ${time}`
+}
 const EVENT_TYPES: Record<string, string> = { holiday: "Feriado", institutional: "Institucional", class_event: "Evento de turma" }
 const VISIBILITY_LABEL: Record<string, string> = { all: "Todos", teachers: "Professores", coordinators: "Coordenadores" }
 const today = () => new Date().toISOString().slice(0, 10)
@@ -71,8 +80,8 @@ export default function CalendarPage() {
     exportToExcel(events.map(ev => ({
       "Título": ev.title ?? "",
       "Tipo (holiday/institutional/class_event)": ev.event_type ?? "",
-      "Início (DD/MM/AAAA HH:MM)": ev.start_date ? new Date(ev.start_date).toLocaleString("pt-BR") : "",
-      "Fim (DD/MM/AAAA HH:MM)": ev.end_date ? new Date(ev.end_date).toLocaleString("pt-BR") : "",
+      "Início (DD/MM/AAAA HH:MM)": fmtIso(ev.start_date ?? null),
+      "Fim (DD/MM/AAAA HH:MM)": fmtIso(ev.end_date ?? null),
       "Visibilidade (all/teachers/coordinators)": ev.visibility ?? "",
       "Descrição": ev.description ?? "",
     })), "calendario")
@@ -196,8 +205,8 @@ export default function CalendarPage() {
                   <TableCell className="font-medium">{ev.title ?? "—"}</TableCell>
                   <TableCell>{ev.event_type ? <Badge variant="outline">{EVENT_TYPES[ev.event_type] ?? ev.event_type}</Badge> : "—"}</TableCell>
                   <TableCell>{ev.visibility ? VISIBILITY_LABEL[ev.visibility] ?? ev.visibility : "—"}</TableCell>
-                  <TableCell>{ev.start_date ? new Date(ev.start_date).toLocaleString("pt-BR") : "—"}</TableCell>
-                  <TableCell>{ev.end_date ? new Date(ev.end_date).toLocaleString("pt-BR") : "—"}</TableCell>
+                  <TableCell>{fmtIso(ev.start_date ?? null)}</TableCell>
+                  <TableCell>{fmtIso(ev.end_date ?? null)}</TableCell>
                   <TableCell>{canEdit && <div className="flex gap-1">
                     <Button variant="ghost" size="icon" onClick={() => openEdit(ev)}><Pencil className="size-4" /></Button>
                     <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(ev)}><Trash2 className="size-4" /></Button>
