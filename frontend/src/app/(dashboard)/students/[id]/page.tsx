@@ -170,7 +170,7 @@ export default function StudentHistoryPage() {
         </Card>
         <Card>
           <CardContent className="pt-4 pb-4">
-            <StatBadge value={activeLoans} label="Empréstimos" color={activeLoans > 0 ? "text-orange-600" : "text-foreground"} />
+            <StatBadge value={activeLoans} label="Biblioteca" color={activeLoans > 0 ? "text-orange-600" : "text-foreground"} />
           </CardContent>
         </Card>
       </div>
@@ -241,7 +241,7 @@ export default function StudentHistoryPage() {
           <TabsTrigger value="grades">Notas ({grades.length})</TabsTrigger>
           <TabsTrigger value="activities">Atividades ({activities.length})</TabsTrigger>
           <TabsTrigger value="highlights">Destaques ({highlights.length})</TabsTrigger>
-          <TabsTrigger value="loans">Empréstimos ({loans.length})</TabsTrigger>
+          <TabsTrigger value="loans">Biblioteca ({loans.length})</TabsTrigger>
         </TabsList>
 
         {/* Presença */}
@@ -437,7 +437,7 @@ export default function StudentHistoryPage() {
           </div>
         </TabsContent>
 
-        {/* Empréstimos */}
+        {/* Biblioteca */}
         <TabsContent value="loans">
           <Card>
             <CardContent className="p-0">

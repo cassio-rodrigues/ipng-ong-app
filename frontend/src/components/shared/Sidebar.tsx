@@ -37,7 +37,7 @@ const navItems = [
   { href: "/activities", label: "Atividades", icon: Zap },
   { href: "/highlights", label: "Destaques", icon: Trophy },
   { href: "/calendar", label: "Calendário", icon: CalendarDays },
-  { href: "/loans", label: "Empréstimos", icon: BookMarked },
+  { href: "/loans", label: "Biblioteca", icon: BookMarked },
   { href: "/audit", label: "Auditoria", icon: ScrollText },
 ]
 
