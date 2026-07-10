@@ -45,7 +45,11 @@ export default function AssessmentsPage() {
         assessmentsApi.list(filterClass !== "all" ? { class_id: filterClass } : {}),
         classesApi.list(classParams),
       ])
-      setAssessments(aRes.data); setClasses(cRes.data)
+      const teacherClassIds = new Set(cRes.data.map((c: Class_) => c.id))
+      const filtered = isTeacher
+        ? aRes.data.filter((a: Assessment) => a.class_id && teacherClassIds.has(a.class_id))
+        : aRes.data
+      setAssessments(filtered); setClasses(cRes.data)
     } finally { setLoading(false) }
   }
 

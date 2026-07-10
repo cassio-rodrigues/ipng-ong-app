@@ -25,25 +25,27 @@ import { useAuth } from "@/hooks/use-auth"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 
-const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/users", label: "Usuários", icon: Users },
-  { href: "/units", label: "Unidades", icon: Building2 },
-  { href: "/books", label: "Livros", icon: BookOpen },
-  { href: "/classes", label: "Turmas", icon: GraduationCap },
-  { href: "/students", label: "Alunos", icon: UserCheck },
-  { href: "/lessons", label: "Aulas", icon: ClipboardList },
-  { href: "/assessments", label: "Avaliações", icon: Star },
-  { href: "/activities", label: "Atividades", icon: Zap },
-  { href: "/highlights", label: "Destaques", icon: Trophy },
-  { href: "/calendar", label: "Calendário", icon: CalendarDays },
-  { href: "/loans", label: "Biblioteca", icon: BookMarked },
-  { href: "/audit", label: "Auditoria", icon: ScrollText },
+const allNavItems = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, teacherHidden: false },
+  { href: "/users", label: "Usuários", icon: Users, teacherHidden: true },
+  { href: "/units", label: "Unidades", icon: Building2, teacherHidden: true },
+  { href: "/books", label: "Livros", icon: BookOpen, teacherHidden: true },
+  { href: "/classes", label: "Turmas", icon: GraduationCap, teacherHidden: false },
+  { href: "/students", label: "Alunos", icon: UserCheck, teacherHidden: false },
+  { href: "/lessons", label: "Aulas", icon: ClipboardList, teacherHidden: false },
+  { href: "/assessments", label: "Avaliações", icon: Star, teacherHidden: false },
+  { href: "/activities", label: "Atividades", icon: Zap, teacherHidden: false },
+  { href: "/highlights", label: "Destaques", icon: Trophy, teacherHidden: false },
+  { href: "/calendar", label: "Calendário", icon: CalendarDays, teacherHidden: false },
+  { href: "/loans", label: "Biblioteca", icon: BookMarked, teacherHidden: true },
+  { href: "/audit", label: "Auditoria", icon: ScrollText, teacherHidden: true },
 ]
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
   const { user, logout } = useAuth()
+  const isTeacher = user?.role === "teacher"
+  const navItems = allNavItems.filter(item => !isTeacher || !item.teacherHidden)
 
   return (
     <div className="flex flex-col h-full">

@@ -25,13 +25,14 @@ router = APIRouter(prefix="/students", tags=["Students"])
 @router.get("", response_model=list[StudentResponse])
 async def get_students(
     skip: int = 0,
-    limit: int = 50,
+    limit: int = 200,
     unit_id: uuid.UUID | None = None,
     status: str | None = None,
+    teacher_id: uuid.UUID | None = None,
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_user),
 ):
-    return await list_students(db, skip, limit, unit_id, status)
+    return await list_students(db, skip, limit, unit_id, status, teacher_id)
 
 
 @router.post("", response_model=StudentResponse, status_code=status.HTTP_201_CREATED)

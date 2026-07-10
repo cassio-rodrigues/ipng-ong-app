@@ -26,7 +26,7 @@ const EMPTY = {
 const STUDENT_HEADERS = ["Nome completo", "Email", "Telefone", "Nascimento (DD/MM/AAAA)", "Gênero (M/F/O)", "Unidade"]
 
 export default function StudentsPage() {
-  const { canEdit, isTeacher } = useAuth()
+  const { canEdit, isTeacher, user } = useAuth()
   const canManage = canEdit || isTeacher
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [students, setStudents] = useState<Student[]>([])
@@ -48,10 +48,11 @@ export default function StudentsPage() {
       const params: Record<string, string> = {}
       if (filterUnit !== "all") params.unit_id = filterUnit
       if (filterStatus !== "all") params.status = filterStatus
+      if (isTeacher && user?.id) params.teacher_id = user.id
       const [sRes, uRes, cRes] = await Promise.all([
         studentsApi.list(params),
         unitsApi.list(),
-        classesApi.list(),
+        classesApi.list(isTeacher && user?.id ? { teacher_id: user.id } : {}),
       ])
       setStudents(sRes.data); setUnits(uRes.data); setClasses(cRes.data)
     } finally { setLoading(false) }
@@ -364,28 +365,37 @@ export default function StudentsPage() {
       {loading ? <p className="text-muted-foreground text-sm">Carregando…</p> : (
         <div className="rounded-md border bg-card overflow-x-auto">
           <Table>
-            <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Email</TableHead><TableHead>Telefone</TableHead><TableHead>Nascimento</TableHead><TableHead>Status</TableHead><TableHead className="w-28" /></TableRow></TableHeader>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nome</TableHead>
+                {!isTeacher && <TableHead>Email</TableHead>}
+                <TableHead>WhatsApp</TableHead>
+                {!isTeacher && <TableHead>Nascimento</TableHead>}
+                <TableHead>Status</TableHead>
+                <TableHead className="w-28" />
+              </TableRow>
+            </TableHeader>
             <TableBody>
               {students.map(s => (
                 <TableRow key={s.id}>
                   <TableCell className="font-medium">{s.full_name ?? "—"}</TableCell>
-                  <TableCell>{s.email ?? "—"}</TableCell>
+                  {!isTeacher && <TableCell>{s.email ?? "—"}</TableCell>}
                   <TableCell>{s.phone ?? "—"}</TableCell>
-                  <TableCell>{s.birth_date ? new Date(s.birth_date).toLocaleDateString("pt-BR") : "—"}</TableCell>
+                  {!isTeacher && <TableCell>{s.birth_date ? new Date(s.birth_date).toLocaleDateString("pt-BR") : "—"}</TableCell>}
                   <TableCell><Badge variant={s.status === "active" ? "default" : "secondary"}>{s.status === "active" ? "Ativo" : "Inativo"}</Badge></TableCell>
                   <TableCell><div className="flex gap-1">
                     <Button variant="ghost" size="icon" title="Ver histórico" asChild>
                       <Link href={`/students/${s.id}`}><ExternalLink className="size-4" /></Link>
                     </Button>
                     <Button variant="ghost" size="icon" title="Matrículas" onClick={() => openEnroll(s)}><BookOpen className="size-4" /></Button>
-                    {canManage && <>
+                    {canEdit && <>
                       <Button variant="ghost" size="icon" onClick={() => openEdit(s)}><Pencil className="size-4" /></Button>
                       <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" title="Excluir" onClick={() => handleDelete(s)}><Trash2 className="size-4" /></Button>
                     </>}
                   </div></TableCell>
                 </TableRow>
               ))}
-              {students.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhum aluno encontrado</TableCell></TableRow>}
+              {students.length === 0 && <TableRow><TableCell colSpan={isTeacher ? 4 : 6} className="text-center text-muted-foreground py-8">Nenhum aluno encontrado</TableCell></TableRow>}
             </TableBody>
           </Table>
         </div>

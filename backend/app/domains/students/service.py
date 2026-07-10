@@ -6,17 +6,25 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domains.students.schemas import EnrollmentCreate, StudentCreate, StudentUpdate
+from app.models.class_ import Class_
 from app.models.student import Enrollment, Student
 
 
 async def list_students(
     db: AsyncSession,
     skip: int = 0,
-    limit: int = 50,
+    limit: int = 200,
     unit_id: uuid.UUID | None = None,
     status: str | None = None,
+    teacher_id: uuid.UUID | None = None,
 ) -> list[Student]:
     q = select(Student)
+    if teacher_id:
+        q = (q
+             .join(Enrollment, Enrollment.student_id == Student.id)
+             .join(Class_, Class_.id == Enrollment.class_id)
+             .where(Class_.main_teacher_id == teacher_id)
+             .distinct())
     if unit_id:
         q = q.where(Student.unit_id == unit_id)
     if status:

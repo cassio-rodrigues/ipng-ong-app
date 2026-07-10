@@ -1,8 +1,10 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { statsApi, calendarApi } from "@/lib/api"
-import type { CalendarEvent } from "@/types"
+import { statsApi, calendarApi, classesApi, studentsApi, lessonsApi } from "@/lib/api"
+import type { CalendarEvent, Class_, Student, Lesson } from "@/types"
+import Link from "next/link"
+import { useAuth } from "@/hooks/use-auth"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
@@ -18,6 +20,8 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
+  ClipboardList,
+  ExternalLink,
 } from "lucide-react"
 
 interface ClassCount { class_id: string; class_name: string; count: number }
@@ -188,17 +192,118 @@ function MonthCalendar() {
   )
 }
 
+function TeacherDashboard() {
+  const { user } = useAuth()
+  const [classes, setClasses] = useState<Class_[]>([])
+  const [students, setStudents] = useState<Student[]>([])
+  const [lessons, setLessons] = useState<Lesson[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!user?.id) return
+    Promise.all([
+      classesApi.list({ teacher_id: user.id }),
+      studentsApi.list({ teacher_id: user.id, status: "active" }),
+      lessonsApi.list({ teacher_id: user.id, status: "scheduled" }),
+    ]).then(([cRes, sRes, lRes]) => {
+      setClasses(cRes.data)
+      setStudents(sRes.data)
+      setLessons(lRes.data.slice(0, 5))
+    }).finally(() => setLoading(false))
+  }, [user?.id])
+
+  const activeClasses = classes.filter(c => c.status === "active")
+  const byGender = {
+    M: students.filter(s => s.gender === "M").length,
+    F: students.filter(s => s.gender === "F").length,
+    O: students.filter(s => s.gender !== "M" && s.gender !== "F").length,
+  }
+
+  if (loading) return <p className="text-muted-foreground text-sm">Carregando…</p>
+
+  return (
+    <div className="space-y-8">
+      <h1 className="text-2xl font-bold">Olá, {user?.name?.split(" ")[0]} 👋</h1>
+
+      {/* Stats */}
+      <section>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">Minhas turmas</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <StatCard label="Turmas ativas" value={activeClasses.length} icon={GraduationCap} color="text-orange-500" />
+          <StatCard label="Alunos ativos" value={students.length} icon={UserCheck} color="text-green-500" />
+          <StatCard label="Masculino" value={byGender.M} icon={Users} color="text-blue-500" />
+          <StatCard label="Feminino" value={byGender.F} sub={byGender.O > 0 ? `${byGender.O} outro(s)` : undefined} icon={Users} color="text-pink-500" />
+        </div>
+      </section>
+
+      {/* Próximas aulas */}
+      <section>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">Próximas aulas agendadas</h2>
+        {lessons.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nenhuma aula agendada.</p>
+        ) : (
+          <div className="rounded-md border bg-card overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Turma</TableHead>
+                  <TableHead>Data / Hora</TableHead>
+                  <TableHead className="w-36" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {lessons.map(l => {
+                  const cls = classes.find(c => c.id === l.class_id)
+                  return (
+                    <TableRow key={l.id}>
+                      <TableCell className="font-medium">{cls?.name ?? "—"}</TableCell>
+                      <TableCell>{l.scheduled_at ? new Date(l.scheduled_at).toLocaleString("pt-BR") : "—"}</TableCell>
+                      <TableCell>
+                        <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" asChild>
+                          <Link href={`/lessons/${l.id}`}>
+                            <ClipboardList className="size-3.5" />
+                            Lista de chamada
+                          </Link>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+        <div className="mt-2">
+          <Button variant="ghost" size="sm" className="text-xs text-muted-foreground gap-1" asChild>
+            <Link href="/lessons"><ExternalLink className="size-3.5" />Ver todas as aulas</Link>
+          </Button>
+        </div>
+      </section>
+
+      {/* Calendário */}
+      <section>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">Calendário</h2>
+        <MonthCalendar />
+      </section>
+    </div>
+  )
+}
+
 export default function DashboardPage() {
+  const { isTeacher } = useAuth()
   const [data, setData] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
   useEffect(() => {
+    if (isTeacher) return
     statsApi.dashboard()
       .then(r => setData(r.data))
       .catch(() => setError(true))
       .finally(() => setLoading(false))
-  }, [])
+  }, [isTeacher])
+
+  if (isTeacher) return <TeacherDashboard />
 
   if (loading) return (
     <div>

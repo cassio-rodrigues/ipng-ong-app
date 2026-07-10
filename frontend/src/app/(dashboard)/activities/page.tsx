@@ -47,7 +47,11 @@ export default function ActivitiesPage() {
         activitiesApi.list(filterClass !== "all" ? { class_id: filterClass } : {}),
         classesApi.list(classParams),
       ])
-      setActivities(aRes.data); setClasses(cRes.data)
+      const teacherClassIds = new Set(cRes.data.map((c: Class_) => c.id))
+      const filtered = isTeacher
+        ? aRes.data.filter((a: Activity) => a.class_id && teacherClassIds.has(a.class_id))
+        : aRes.data
+      setActivities(filtered); setClasses(cRes.data)
     } finally { setLoading(false) }
   }
 

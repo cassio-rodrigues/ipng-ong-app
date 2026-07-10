@@ -105,9 +105,13 @@ export default function HighlightsPage() {
       const [hRes, cRes, sRes] = await Promise.all([
         highlightsApi.list(filterClass !== "all" ? { class_id: filterClass } : {}),
         classesApi.list(classParams),
-        studentsApi.list({}),
+        studentsApi.list(isTeacher && user?.id ? { teacher_id: user.id } : {}),
       ])
-      setHighlights(hRes.data); setClasses(cRes.data); setStudents(sRes.data)
+      const teacherClassIds = new Set(cRes.data.map((c: Class_) => c.id))
+      const filtered = isTeacher
+        ? hRes.data.filter((h: StudentHighlight) => h.class_id && teacherClassIds.has(h.class_id))
+        : hRes.data
+      setHighlights(filtered); setClasses(cRes.data); setStudents(sRes.data)
     } finally { setLoading(false) }
   }
 
