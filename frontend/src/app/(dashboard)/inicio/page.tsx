@@ -42,10 +42,12 @@ export default function InicioPage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Início</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Olá, {user?.name?.split(" ")[0]}! Selecione uma área para começar.
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold tracking-tight">
+          👋 Olá, {user?.name?.split(" ")[0]}!
+        </h1>
+        <p className="text-base text-muted-foreground mt-2">
+          Bem-vindo(a) de volta. O que vamos fazer hoje?
         </p>
       </div>
 
