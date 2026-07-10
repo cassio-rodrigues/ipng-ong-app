@@ -78,6 +78,15 @@ export interface Student {
   unit_id: string | null
   status: string | null
   created_at: string | null
+  address: string | null
+  rg: string | null
+  cpf: string | null
+  education_level: string | null
+  guardian_name: string | null
+  guardian_rg: string | null
+  guardian_cpf: string | null
+  terms_accepted: boolean | null
+  image_consent: boolean | null
 }
 
 export interface Enrollment {

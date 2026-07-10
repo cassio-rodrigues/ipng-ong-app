@@ -16,7 +16,12 @@ import { useAuth } from "@/hooks/use-auth"
 import { exportToExcel, downloadTemplate, parseExcel, fmtDate } from "@/lib/excel"
 import { toast } from "sonner"
 
-const EMPTY = { full_name: "", email: "", phone: "", gender: "", birth_date: "", unit_id: "", status: "active" }
+const EMPTY = {
+  full_name: "", email: "", phone: "", gender: "", birth_date: "", unit_id: "", status: "active",
+  address: "", rg: "", cpf: "", education_level: "",
+  guardian_name: "", guardian_rg: "", guardian_cpf: "",
+  terms_accepted: "", image_consent: "",
+}
 
 const STUDENT_HEADERS = ["Nome completo", "Email", "Telefone", "Nascimento (DD/MM/AAAA)", "Gênero (M/F/O)", "Unidade"]
 
@@ -56,7 +61,16 @@ export default function StudentsPage() {
 
   function openEdit(s: Student) {
     setEditStudent(s)
-    setForm({ full_name: s.full_name ?? "", email: s.email ?? "", phone: s.phone ?? "", gender: s.gender ?? "", birth_date: s.birth_date ? s.birth_date.slice(0, 10) : "", unit_id: s.unit_id ?? "", status: s.status ?? "active" })
+    setForm({
+      full_name: s.full_name ?? "", email: s.email ?? "", phone: s.phone ?? "",
+      gender: s.gender ?? "", birth_date: s.birth_date ? s.birth_date.slice(0, 10) : "",
+      unit_id: s.unit_id ?? "", status: s.status ?? "active",
+      address: s.address ?? "", rg: s.rg ?? "", cpf: s.cpf ?? "",
+      education_level: s.education_level ?? "",
+      guardian_name: s.guardian_name ?? "", guardian_rg: s.guardian_rg ?? "", guardian_cpf: s.guardian_cpf ?? "",
+      terms_accepted: s.terms_accepted === true ? "true" : s.terms_accepted === false ? "false" : "",
+      image_consent: s.image_consent === true ? "true" : s.image_consent === false ? "false" : "",
+    })
   }
 
   async function openEnroll(s: Student) {
@@ -65,10 +79,28 @@ export default function StudentsPage() {
     setEnrollments(data)
   }
 
+  function formPayload() {
+    return {
+      ...form,
+      unit_id: form.unit_id || undefined,
+      gender: form.gender || undefined,
+      birth_date: form.birth_date || undefined,
+      address: form.address || undefined,
+      rg: form.rg || undefined,
+      cpf: form.cpf || undefined,
+      education_level: form.education_level || undefined,
+      guardian_name: form.guardian_name || undefined,
+      guardian_rg: form.guardian_rg || undefined,
+      guardian_cpf: form.guardian_cpf || undefined,
+      terms_accepted: form.terms_accepted !== "" ? form.terms_accepted === "true" : undefined,
+      image_consent: form.image_consent !== "" ? form.image_consent === "true" : undefined,
+    }
+  }
+
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault(); setSaving(true)
     try {
-      await studentsApi.create({ ...form, unit_id: form.unit_id || undefined, gender: form.gender || undefined, birth_date: form.birth_date || undefined })
+      await studentsApi.create(formPayload())
       setCreateOpen(false); setForm({ ...EMPTY }); await load()
     } finally { setSaving(false) }
   }
@@ -76,7 +108,7 @@ export default function StudentsPage() {
   async function handleEdit(e: React.FormEvent) {
     e.preventDefault(); if (!editStudent) return; setSaving(true)
     try {
-      await studentsApi.update(editStudent.id, { ...form, unit_id: form.unit_id || undefined, gender: form.gender || undefined, birth_date: form.birth_date || undefined, status: form.status })
+      await studentsApi.update(editStudent.id, formPayload())
       setEditStudent(null); await load()
     } finally { setSaving(false) }
   }
@@ -136,16 +168,14 @@ export default function StudentsPage() {
   }
 
   const formFields = (isEdit = false) => (
-    <div className="space-y-4 mt-2">
-      <div className="space-y-1.5"><Label>Nome completo</Label><Input value={form.full_name} onChange={e => F("full_name", e.target.value)} required /></div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-1.5"><Label>Email</Label><Input type="email" value={form.email} onChange={e => F("email", e.target.value)} /></div>
-        <div className="space-y-1.5"><Label>Telefone</Label><Input value={form.phone} onChange={e => F("phone", e.target.value)} /></div>
-      </div>
+    <div className="space-y-5 mt-2 overflow-y-auto max-h-[65vh] pr-1">
+      {/* Dados pessoais */}
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Dados pessoais</p>
+      <div className="space-y-1.5"><Label>Nome completo *</Label><Input value={form.full_name} onChange={e => F("full_name", e.target.value)} required /></div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5"><Label>Data de nascimento</Label><Input type="date" value={form.birth_date} onChange={e => F("birth_date", e.target.value)} /></div>
         <div className="space-y-1.5">
-          <Label>Gênero</Label>
+          <Label>Sexo</Label>
           <Select value={form.gender} onValueChange={v => F("gender", v)}>
             <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
             <SelectContent>
@@ -156,6 +186,44 @@ export default function StudentsPage() {
           </Select>
         </div>
       </div>
+      <div className="space-y-1.5"><Label>Endereço completo</Label><Input value={form.address} onChange={e => F("address", e.target.value)} placeholder="Rua, número, bairro, cidade" /></div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1.5"><Label>RG</Label><Input value={form.rg} onChange={e => F("rg", e.target.value)} /></div>
+        <div className="space-y-1.5"><Label>CPF</Label><Input value={form.cpf} onChange={e => F("cpf", e.target.value)} placeholder="000.000.000-00" /></div>
+      </div>
+      <div className="space-y-1.5">
+        <Label>Escolaridade</Label>
+        <Select value={form.education_level} onValueChange={v => F("education_level", v)}>
+          <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="fundamental_incompleto">Fundamental incompleto</SelectItem>
+            <SelectItem value="fundamental_completo">Fundamental completo</SelectItem>
+            <SelectItem value="medio_incompleto">Médio incompleto</SelectItem>
+            <SelectItem value="medio_completo">Médio completo</SelectItem>
+            <SelectItem value="superior_incompleto">Superior incompleto</SelectItem>
+            <SelectItem value="superior_completo">Superior completo</SelectItem>
+            <SelectItem value="pos_graduacao">Pós-graduação</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Contato */}
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-1">Contato</p>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1.5"><Label>Email</Label><Input type="email" value={form.email} onChange={e => F("email", e.target.value)} /></div>
+        <div className="space-y-1.5"><Label>WhatsApp</Label><Input value={form.phone} onChange={e => F("phone", e.target.value)} placeholder="(00) 00000-0000" /></div>
+      </div>
+
+      {/* Responsável */}
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-1">Responsável</p>
+      <div className="space-y-1.5"><Label>Nome completo do responsável</Label><Input value={form.guardian_name} onChange={e => F("guardian_name", e.target.value)} /></div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1.5"><Label>RG do responsável</Label><Input value={form.guardian_rg} onChange={e => F("guardian_rg", e.target.value)} /></div>
+        <div className="space-y-1.5"><Label>CPF do responsável</Label><Input value={form.guardian_cpf} onChange={e => F("guardian_cpf", e.target.value)} placeholder="000.000.000-00" /></div>
+      </div>
+
+      {/* Unidade e status */}
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-1">Matrícula</p>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label>Unidade</Label>
@@ -177,6 +245,31 @@ export default function StudentsPage() {
           </div>
         )}
       </div>
+
+      {/* Consentimentos */}
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-1">Consentimentos</p>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label>Aceite de termos</Label>
+          <Select value={form.terms_accepted} onValueChange={v => F("terms_accepted", v)}>
+            <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="true">Sim</SelectItem>
+              <SelectItem value="false">Não</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label>Autorizo uso de imagem</Label>
+          <Select value={form.image_consent} onValueChange={v => F("image_consent", v)}>
+            <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="true">Sim</SelectItem>
+              <SelectItem value="false">Não</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
     </div>
   )
 
@@ -193,7 +286,7 @@ export default function StudentsPage() {
           </>}
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             {canManage && <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Novo aluno</Button></DialogTrigger>}
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-xl">
             <DialogHeader><DialogTitle>Novo aluno</DialogTitle></DialogHeader>
             <form onSubmit={handleCreate}>
               {formFields()}
