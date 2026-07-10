@@ -22,6 +22,7 @@ import {
   ChevronRight,
   ClipboardList,
   ExternalLink,
+  Building2,
 } from "lucide-react"
 
 interface ClassCount { class_id: string; class_name: string; count: number }
@@ -31,6 +32,39 @@ interface Stats {
   classes: { total: number; active: number }
   students_per_class: ClassCount[]
   absences_per_class: ClassCount[]
+}
+
+const QUICK_LINKS_ADMIN = [
+  { href: "/calendar", label: "Calendário", icon: CalendarDays, color: "bg-sky-500" },
+  { href: "/students", label: "Alunos",     icon: UserCheck,   color: "bg-green-500" },
+  { href: "/users",    label: "Professores", icon: Users,       color: "bg-blue-500" },
+  { href: "/classes",  label: "Turmas",      icon: GraduationCap, color: "bg-orange-500" },
+  { href: "/units",    label: "Unidades",    icon: Building2,   color: "bg-teal-500" },
+]
+
+const QUICK_LINKS_TEACHER = [
+  { href: "/calendar", label: "Calendário", icon: CalendarDays,  color: "bg-sky-500" },
+  { href: "/students", label: "Alunos",     icon: UserCheck,     color: "bg-green-500" },
+  { href: "/classes",  label: "Turmas",     icon: GraduationCap, color: "bg-orange-500" },
+]
+
+function QuickLinks({ items }: { items: typeof QUICK_LINKS_ADMIN }) {
+  return (
+    <div className="flex flex-wrap gap-3">
+      {items.map(({ href, label, icon: Icon, color }) => (
+        <Link
+          key={href}
+          href={href}
+          className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3 text-sm font-medium transition-all hover:shadow-md hover:border-primary/40 active:scale-95"
+        >
+          <div className={`${color} rounded-lg p-2 text-white shadow-sm`}>
+            <Icon className="size-4" />
+          </div>
+          {label}
+        </Link>
+      ))}
+    </div>
+  )
 }
 
 function StatCard({ label, value, sub, icon: Icon, color }: { label: string; value: number | string; sub?: string; icon: React.ElementType; color: string }) {
@@ -231,6 +265,12 @@ function TeacherDashboard() {
     <div className="space-y-8">
       <h1 className="text-2xl font-bold">Olá, {user?.name?.split(" ")[0]} 👋</h1>
 
+      {/* Acesso rápido */}
+      <section>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">Acesso rápido</h2>
+        <QuickLinks items={QUICK_LINKS_TEACHER} />
+      </section>
+
       {/* Stats */}
       <section>
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">Minhas turmas</h2>
@@ -340,6 +380,12 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       <h1 className="text-2xl font-bold">Dashboard</h1>
+
+      {/* Acesso rápido */}
+      <section>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">Acesso rápido</h2>
+        <QuickLinks items={QUICK_LINKS_ADMIN} />
+      </section>
 
       {/* Alunos */}
       <section>
