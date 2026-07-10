@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ExternalLink, Pencil, Plus, Trash2, Download, Upload, FileSpreadsheet } from "lucide-react"
+import { UserCheck, ExternalLink, Pencil, Plus, Trash2, Download, Upload, FileSpreadsheet } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { exportToExcel, downloadTemplate, parseExcel, fmtDateTime } from "@/lib/excel"
 import { toast } from "sonner"
@@ -234,7 +234,7 @@ export default function LessonsPage() {
       {loading ? <p className="text-muted-foreground text-sm">Carregando…</p> : (
         <div className="rounded-md border bg-card overflow-x-auto">
           <Table>
-            <TableHeader><TableRow><TableHead>Turma</TableHead><TableHead>Data agendada</TableHead><TableHead>Status</TableHead><TableHead>Relatório</TableHead><TableHead className="w-28" /></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>Turma</TableHead><TableHead>Data agendada</TableHead><TableHead>Status</TableHead><TableHead>Relatório</TableHead><TableHead className="w-48" /></TableRow></TableHeader>
             <TableBody>
               {lessons.map(l => (
                 <TableRow key={l.id}>
@@ -263,8 +263,11 @@ export default function LessonsPage() {
                     )}
                   </TableCell>
                   <TableCell>{l.report ? <Badge variant="outline">Preenchido</Badge> : <span className="text-muted-foreground text-xs">—</span>}</TableCell>
-                  <TableCell><div className="flex gap-1">
-                    <Button variant="ghost" size="icon" title="Ver detalhes" asChild>
+                  <TableCell><div className="flex items-center gap-1">
+                    <Button variant="default" size="sm" className="h-7 text-xs gap-1.5" asChild>
+                      <Link href={`/lessons/${l.id}`}><UserCheck className="size-3.5" />Presença</Link>
+                    </Button>
+                    <Button variant="ghost" size="icon" title="Ver mais" asChild>
                       <Link href={`/lessons/${l.id}`}><ExternalLink className="size-4" /></Link>
                     </Button>
                     {canManage && <><Button variant="ghost" size="icon" onClick={() => openEdit(l)}><Pencil className="size-4" /></Button>
