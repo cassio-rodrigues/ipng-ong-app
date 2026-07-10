@@ -5,6 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   LayoutDashboard,
+  Home,
   Users,
   Building2,
   BookOpen,
@@ -26,6 +27,7 @@ import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 
 const allNavItems = [
+  { href: "/inicio",    label: "Início",    icon: Home,            teacherHidden: false },
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, teacherHidden: false },
   { href: "/users", label: "Usuários", icon: Users, teacherHidden: true },
   { href: "/units", label: "Unidades", icon: Building2, teacherHidden: true },
