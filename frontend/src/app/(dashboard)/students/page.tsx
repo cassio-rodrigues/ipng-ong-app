@@ -128,6 +128,13 @@ export default function StudentsPage() {
     } finally { setSaving(false) }
   }
 
+  async function handleRemoveEnrollment(enrollmentId: string, className: string) {
+    if (!enrollStudent || !confirm(`Remover matrícula de "${className}"?`)) return
+    await studentsApi.deleteEnrollment(enrollStudent.id, enrollmentId)
+    const { data } = await studentsApi.getEnrollments(enrollStudent.id)
+    setEnrollments(data)
+  }
+
   const F = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
   const classMap = Object.fromEntries(classes.map(c => [c.id, c.name]))
   const unitNameMap = Object.fromEntries(units.map(u => [u.name?.toLowerCase() ?? "", u.id]))
@@ -327,16 +334,24 @@ export default function StudentsPage() {
             </form>}
             <div className="rounded-md border">
               <Table>
-                <TableHeader><TableRow><TableHead>Turma</TableHead><TableHead>Status</TableHead><TableHead>Data</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>Turma</TableHead><TableHead>Status</TableHead><TableHead>Data</TableHead>{canEdit && <TableHead className="w-10" />}</TableRow></TableHeader>
                 <TableBody>
                   {enrollments.map(en => (
                     <TableRow key={en.id}>
                       <TableCell>{classMap[en.class_id] ?? "—"}</TableCell>
                       <TableCell><Badge variant={en.status === "active" ? "default" : "secondary"}>{en.status ?? "—"}</Badge></TableCell>
                       <TableCell>{en.enrollment_date ? new Date(en.enrollment_date).toLocaleDateString("pt-BR") : "—"}</TableCell>
+                      {canEdit && (
+                        <TableCell>
+                          <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive"
+                            onClick={() => handleRemoveEnrollment(en.id, classMap[en.class_id] ?? "turma")}>
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
-                  {enrollments.length === 0 && <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-4">Sem matrículas</TableCell></TableRow>}
+                  {enrollments.length === 0 && <TableRow><TableCell colSpan={canEdit ? 4 : 3} className="text-center text-muted-foreground py-4">Sem matrículas</TableCell></TableRow>}
                 </TableBody>
               </Table>
             </div>
