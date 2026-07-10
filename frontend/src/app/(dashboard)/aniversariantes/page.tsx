@@ -157,7 +157,7 @@ export default function AniversariantesPage() {
                   <TableRow key={`${p.type}-${p.id}`} className={isToday ? "bg-pink-50 dark:bg-pink-950/20" : ""}>
                     <TableCell>
                       <div className="flex items-center gap-1.5">
-                        <span className="font-bold tabular-nums text-base">{String(p.day).padStart(2, "0")}</span>
+                        <span className="font-bold tabular-nums text-base">{fmtDay(p.birth_date, month)}</span>
                         {isToday && <Cake className="size-3.5 text-pink-500" />}
                       </div>
                     </TableCell>
