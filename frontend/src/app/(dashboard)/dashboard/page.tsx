@@ -206,7 +206,7 @@ const ADMIN_TABS: TabItem[] = [
 ]
 
 export default function DashboardPage() {
-  const { isTeacher } = useAuth()
+  const { isTeacher, user } = useAuth()
   const [data,         setData]         = useState<Stats | null>(null)
   const [units,        setUnits]        = useState<Unit[]>([])
   const [teacherUsers, setTeacherUsers] = useState<User[]>([])
@@ -215,7 +215,7 @@ export default function DashboardPage() {
   const [tab,          setTab]          = useState<AdminTab>("alunos")
 
   useEffect(() => {
-    if (isTeacher) return
+    if (!user?.role || isTeacher) return
     Promise.all([statsApi.dashboard(), unitsApi.list(), usersApi.list()])
       .then(([sRes, uRes, userRes]) => {
         setData(sRes.data)
@@ -224,7 +224,7 @@ export default function DashboardPage() {
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false))
-  }, [isTeacher])
+  }, [user?.role, isTeacher])
 
   if (isTeacher) return <TeacherDashboard />
 
