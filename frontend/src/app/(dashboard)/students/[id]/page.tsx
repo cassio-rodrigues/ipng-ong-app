@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { studentsApi } from "@/lib/api"
+import { useAuth } from "@/hooks/use-auth"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -20,6 +21,7 @@ import {
   FileText,
   BookMarked,
   TrendingUp,
+  Trash2,
 } from "lucide-react"
 
 interface StudentBasic {
@@ -101,6 +103,7 @@ function StatBadge({ value, label, color }: { value: number | string; label: str
 export default function StudentHistoryPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
+  const { canEdit } = useAuth()
   const [history, setHistory] = useState<History | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -109,6 +112,13 @@ export default function StudentHistoryPage() {
       .then(r => setHistory(r.data))
       .finally(() => setLoading(false))
   }, [id])
+
+  async function handleRemoveEnrollment(enrollmentId: string, className: string) {
+    if (!confirm(`Remover matrícula de "${className}"?`)) return
+    await studentsApi.deleteEnrollment(id, enrollmentId)
+    const r = await studentsApi.getHistory(id)
+    setHistory(r.data)
+  }
 
   if (loading) return <p className="text-muted-foreground text-sm p-6">Carregando…</p>
   if (!history) return <p className="text-sm text-destructive p-6">Aluno não encontrado.</p>
@@ -212,6 +222,7 @@ export default function StudentHistoryPage() {
                     <TableHead>Nível</TableHead>
                     <TableHead>Matrícula</TableHead>
                     <TableHead>Status</TableHead>
+                    {canEdit && <TableHead className="w-10" />}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -225,6 +236,18 @@ export default function StudentHistoryPage() {
                           {e.status === "active" ? "Ativa" : e.status ?? "—"}
                         </Badge>
                       </TableCell>
+                      {canEdit && (
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => handleRemoveEnrollment(e.id, e.class_?.name ?? "turma")}
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>

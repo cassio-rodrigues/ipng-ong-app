@@ -10,7 +10,9 @@ from app.core.deps import get_current_user, require_role
 from app.domains.students.schemas import EnrollmentCreate, EnrollmentResponse, StudentCreate, StudentResponse, StudentUpdate
 from app.domains.students.service import (
     create_student,
+    delete_enrollment,
     enroll_student,
+    get_enrollment,
     get_enrollments,
     get_student,
     list_students,
@@ -101,3 +103,16 @@ async def enroll(
     if not student:
         raise HTTPException(status_code=404, detail="Aluno não encontrado")
     return await enroll_student(db, student_id, body)
+
+
+@router.delete("/{student_id}/enrollments/{enrollment_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_enrollment(
+    student_id: uuid.UUID,
+    enrollment_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_role("admin", "coordinator")),
+):
+    enrollment = await get_enrollment(db, enrollment_id)
+    if not enrollment or enrollment.student_id != student_id:
+        raise HTTPException(status_code=404, detail="Matrícula não encontrada")
+    await delete_enrollment(db, enrollment)

@@ -69,3 +69,12 @@ async def enroll_student(db: AsyncSession, student_id: uuid.UUID, data: Enrollme
     await db.commit()
     await db.refresh(enrollment)
     return enrollment
+
+
+async def get_enrollment(db: AsyncSession, enrollment_id: uuid.UUID) -> Enrollment | None:
+    return await db.get(Enrollment, enrollment_id)
+
+
+async def delete_enrollment(db: AsyncSession, enrollment: Enrollment) -> None:
+    await db.delete(enrollment)
+    await db.commit()

@@ -122,6 +122,8 @@ export const studentsApi = {
     api.post(`/students/${id}/enrollments`, { class_id }),
   getHistory: (id: string) => api.get(`/students/${id}/history`),
   delete: (id: string) => api.delete(`/students/${id}`),
+  deleteEnrollment: (studentId: string, enrollmentId: string) =>
+    api.delete(`/students/${studentId}/enrollments/${enrollmentId}`),
 }
 
 // Lessons
