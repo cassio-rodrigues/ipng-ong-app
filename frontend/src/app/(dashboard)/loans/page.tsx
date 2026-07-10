@@ -43,13 +43,19 @@ export default function LoansPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [returning, setReturning] = useState<string | null>(null)
   const [filterStatus, setFilterStatus] = useState("all")
+  const [filterStudent, setFilterStudent] = useState("all")
+  const [filterBook, setFilterBook] = useState("all")
   const [form, setForm] = useState({ student_id: "", book_id: "", due_date: "", notes: "" })
   const [saving, setSaving] = useState(false)
 
   async function load() {
     try {
+      const params: Record<string, string> = {}
+      if (filterStatus !== "all") params.status = filterStatus
+      if (filterStudent !== "all") params.student_id = filterStudent
+      if (filterBook !== "all") params.book_id = filterBook
       const [lRes, sRes, bRes] = await Promise.all([
-        loansApi.list(filterStatus !== "all" ? { status: filterStatus } : {}),
+        loansApi.list(params),
         studentsApi.list({}),
         booksApi.list(),
       ])
@@ -59,7 +65,7 @@ export default function LoansPage() {
     } finally { setLoading(false) }
   }
 
-  useEffect(() => { load() }, [filterStatus])
+  useEffect(() => { load() }, [filterStatus, filterStudent, filterBook])
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -172,15 +178,39 @@ export default function LoansPage() {
         )}
       </div>
 
-      <div className="flex gap-3 mb-4">
+      <div className="flex flex-wrap gap-3 mb-4">
         <Select value={filterStatus} onValueChange={setFilterStatus}>
           <SelectTrigger className="w-44">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="all">Todos os status</SelectItem>
             <SelectItem value="active">Emprestados</SelectItem>
             <SelectItem value="returned">Devolvidos</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={filterStudent} onValueChange={setFilterStudent}>
+          <SelectTrigger className="w-52">
+            <SelectValue placeholder="Filtrar por aluno" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os alunos</SelectItem>
+            {students.map(s => (
+              <SelectItem key={s.id} value={s.id}>{s.full_name ?? s.id}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={filterBook} onValueChange={setFilterBook}>
+          <SelectTrigger className="w-52">
+            <SelectValue placeholder="Filtrar por livro" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os livros</SelectItem>
+            {books.map(b => (
+              <SelectItem key={b.id} value={b.id}>{b.title ?? b.id}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
