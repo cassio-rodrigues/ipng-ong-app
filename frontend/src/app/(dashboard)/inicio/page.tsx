@@ -44,7 +44,7 @@ export default function InicioPage() {
     <div>
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight">
-          👋 Olá, {user?.name?.split(" ")[0]}!
+          Olá, {user?.name?.split(" ")[0]}! 👋
         </h1>
         <p className="text-base text-muted-foreground mt-2">
           Bem-vindo(a) de volta. O que vamos fazer hoje?
