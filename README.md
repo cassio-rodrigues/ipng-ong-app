@@ -59,28 +59,135 @@ Internet
 
 ```
 ipng-ong-app/
+├── .env.example
+├── Makefile
+├── docker-compose.yml               # Ambiente de desenvolvimento
+├── docker-compose.prod.yml          # Ambiente de produção
+├── init-ssl.sh
+│
+├── nginx/
+│   └── templates/
+│       └── app.conf.template
+│
 ├── backend/
+│   ├── Dockerfile
+│   ├── alembic.ini
+│   ├── pyproject.toml
+│   ├── seed.py                      # Cria usuário admin inicial
+│   │
 │   ├── app/
-│   │   ├── api/v1/router.py       # Agrega todos os routers
-│   │   ├── core/                  # Config, DB, segurança, deps
-│   │   ├── domains/               # Lógica por domínio (auth, users, classes…)
-│   │   └── models/                # Models SQLAlchemy
-│   ├── migrations/                # Alembic migrations
-│   └── seed.py                    # Cria usuário admin inicial
-├── frontend/
-│   └── src/
-│       ├── app/
-│       │   ├── (auth)/login/      # Página de login
-│       │   └── (dashboard)/       # Páginas autenticadas
-│       ├── components/
-│       │   ├── shared/            # AuthGuard, Sidebar
-│       │   └── ui/                # Componentes shadcn/ui
-│       ├── lib/api.ts             # Cliente Axios + interceptors
-│       └── types/index.ts         # Tipos TypeScript
-├── nginx/templates/app.conf.template
-├── docker-compose.yml             # Ambiente de desenvolvimento
-├── docker-compose.prod.yml        # Ambiente de produção
-└── Makefile                       # Comandos utilitários
+│   │   ├── main.py
+│   │   │
+│   │   ├── api/
+│   │   │   └── v1/
+│   │   │       └── router.py        # Agrega todos os routers
+│   │   │
+│   │   ├── core/
+│   │   │   ├── config.py            # Settings via pydantic-settings
+│   │   │   ├── database.py          # Engine async + SessionLocal
+│   │   │   ├── deps.py              # get_current_user, require_role, check_owner
+│   │   │   ├── limiter.py           # Rate limiting (slowapi)
+│   │   │   └── security.py          # Hash de senhas + JWT
+│   │   │
+│   │   ├── models/
+│   │   │   ├── activity.py          # Activity, StudentActivity, StudentHighlight
+│   │   │   ├── assessment.py        # Assessment, StudentGrade
+│   │   │   ├── attendance.py        # Attendance
+│   │   │   ├── audit.py             # AuditLog
+│   │   │   ├── book.py              # Book, BookChapter
+│   │   │   ├── book_loan.py         # BookLoan
+│   │   │   ├── calendar.py          # CalendarEvent
+│   │   │   ├── class_.py            # Class_, ClassAssignment
+│   │   │   ├── lesson.py            # Lesson, LessonReport, LessonMaterial
+│   │   │   ├── student.py           # Student, Enrollment
+│   │   │   ├── unit.py              # Unit
+│   │   │   └── user.py              # User, TeacherProfile
+│   │   │
+│   │   └── domains/
+│   │       ├── activities/          → router, schemas, service
+│   │       ├── assessments/         → router, schemas, service
+│   │       ├── attendance/          → router, schemas, service
+│   │       ├── audit/               → router, schemas
+│   │       ├── auth/                → router, schemas, service
+│   │       ├── books/               → router, schemas, service
+│   │       ├── calendar/            → router, schemas, service
+│   │       ├── classes/             → router, schemas, service
+│   │       ├── lessons/             → router, schemas, service
+│   │       ├── loans/               → router, schemas, service
+│   │       ├── stats/               → router, schemas
+│   │       ├── students/            → router, schemas, service, history_schemas, history_service
+│   │       ├── units/               → router, schemas, service
+│   │       └── users/               → router, schemas, service
+│   │
+│   ├── migrations/
+│   │   ├── env.py
+│   │   └── versions/
+│   │       ├── 0001_initial_schema.py
+│   │       ├── 0002_add_must_change_password.py
+│   │       ├── 0003_add_book_loans.py
+│   │       ├── 0004_add_student_extra_fields.py
+│   │       ├── 0005_add_highlight_form_fields.py
+│   │       └── 0006_add_user_atribuicoes.py
+│   │
+│   └── tests/
+│       └── conftest.py
+│
+└── frontend/
+    ├── Dockerfile
+    ├── next.config.ts
+    ├── package.json
+    ├── tsconfig.json
+    │
+    ├── public/
+    │   └── logo.png
+    │
+    └── src/
+        ├── app/
+        │   ├── page.tsx                         # Redirect raiz → /inicio
+        │   ├── layout.tsx
+        │   ├── globals.css
+        │   │
+        │   ├── (auth)/
+        │   │   └── login/page.tsx
+        │   │
+        │   └── (dashboard)/
+        │       ├── layout.tsx
+        │       ├── inicio/page.tsx              # Tela inicial com cards de navegação
+        │       ├── dashboard/page.tsx           # Métricas e gráficos por tabs
+        │       ├── classes/page.tsx             # Gestão de turmas
+        │       ├── students/page.tsx            # Gestão de alunos + matrículas
+        │       ├── students/[id]/page.tsx       # Histórico completo do aluno
+        │       ├── lessons/page.tsx             # Listagem de aulas
+        │       ├── lessons/[id]/page.tsx        # Presença, relatório e materiais
+        │       ├── assessments/page.tsx         # Listagem de avaliações
+        │       ├── assessments/[id]/page.tsx    # Lançamento de notas
+        │       ├── activities/page.tsx          # Atividades
+        │       ├── highlights/page.tsx          # Destaques de alunos
+        │       ├── calendar/page.tsx            # Calendário institucional
+        │       ├── aniversariantes/page.tsx     # Aniversariantes do mês
+        │       ├── users/page.tsx               # Gestão de usuários (admin)
+        │       ├── units/page.tsx               # Gestão de unidades (admin)
+        │       ├── books/page.tsx               # Gestão de livros
+        │       ├── loans/page.tsx               # Biblioteca / empréstimos
+        │       └── audit/page.tsx               # Logs de auditoria (admin)
+        │
+        ├── components/
+        │   ├── shared/
+        │   │   ├── AuthGuard.tsx
+        │   │   ├── ChangePasswordModal.tsx
+        │   │   └── Sidebar.tsx
+        │   └── ui/                              # Componentes shadcn/ui
+        │
+        ├── hooks/
+        │   └── use-auth.ts
+        │
+        ├── lib/
+        │   ├── api.ts                           # Cliente Axios + todos os endpoints
+        │   ├── excel.ts                         # Exportação/importação Excel
+        │   └── utils.ts
+        │
+        └── types/
+            └── index.ts                         # Tipos TypeScript globais
 ```
 
 ### Domínios da API
