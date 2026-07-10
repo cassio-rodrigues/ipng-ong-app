@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,14 +25,16 @@ router = APIRouter(prefix="/lessons", tags=["Lessons"])
 @router.get("", response_model=list[LessonResponse])
 async def get_lessons(
     skip: int = 0,
-    limit: int = 50,
+    limit: int = 200,
     class_id: uuid.UUID | None = None,
     teacher_id: uuid.UUID | None = None,
     status: str | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_user),
 ):
-    return await list_lessons(db, skip, limit, class_id, teacher_id, status)
+    return await list_lessons(db, skip, limit, class_id, teacher_id, status, start_date, end_date)
 
 
 @router.post("", response_model=LessonResponse, status_code=status.HTTP_201_CREATED)

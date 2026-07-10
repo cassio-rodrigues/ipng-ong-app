@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import date, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,10 +14,12 @@ from app.models.lesson import Lesson, LessonMaterial, LessonReport
 async def list_lessons(
     db: AsyncSession,
     skip: int = 0,
-    limit: int = 50,
+    limit: int = 200,
     class_id: uuid.UUID | None = None,
     teacher_id: uuid.UUID | None = None,
     status: str | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
 ) -> list[Lesson]:
     q = select(Lesson).options(selectinload(Lesson.report), selectinload(Lesson.materials))
     if class_id:
@@ -25,7 +28,11 @@ async def list_lessons(
         q = q.where(Lesson.teacher_id == teacher_id)
     if status:
         q = q.where(Lesson.status == status)
-    result = await db.execute(q.offset(skip).limit(limit))
+    if start_date:
+        q = q.where(Lesson.scheduled_at >= datetime(start_date.year, start_date.month, start_date.day))
+    if end_date:
+        q = q.where(Lesson.scheduled_at < datetime(end_date.year, end_date.month, end_date.day) + timedelta(days=1))
+    result = await db.execute(q.order_by(Lesson.scheduled_at.desc()).offset(skip).limit(limit))
     return list(result.scalars().all())
 
 

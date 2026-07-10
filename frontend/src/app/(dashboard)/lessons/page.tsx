@@ -18,8 +18,17 @@ import { toast } from "sonner"
 
 const LESSON_HEADERS = ["Turma (nome)", "Data e hora (DD/MM/AAAA HH:MM)", "Status (scheduled/completed/cancelled)"]
 const STATUS_LABEL: Record<string, string> = { scheduled: "Agendada", completed: "Concluída", cancelled: "Cancelada" }
+const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive"> = {
+  scheduled: "secondary",
+  completed: "default",
+  cancelled: "destructive",
+}
 const today = () => new Date().toISOString().slice(0, 10)
 const getEmpty = () => ({ class_id: "", scheduled_at: `${today()}T00:00` })
+
+const MONTHS = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"]
+const currentYear = new Date().getFullYear()
+const YEARS = [currentYear - 1, currentYear, currentYear + 1]
 
 export default function LessonsPage() {
   const { canEdit, isTeacher, user } = useAuth()
@@ -31,22 +40,33 @@ export default function LessonsPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [editLesson, setEditLesson] = useState<Lesson | null>(null)
   const [filterClass, setFilterClass] = useState("all")
+  const [filterMonth, setFilterMonth] = useState<number>(new Date().getMonth() + 1)
+  const [filterYear, setFilterYear] = useState<number>(currentYear)
   const [form, setForm] = useState(getEmpty())
   const [editStatus, setEditStatus] = useState("")
   const [saving, setSaving] = useState(false)
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
 
   async function load() {
     try {
       const classParams = isTeacher && user?.id ? { teacher_id: user.id } : {}
+      const params: Record<string, unknown> = {}
+      if (filterClass !== "all") params.class_id = filterClass
+      if (isTeacher && user?.id) params.teacher_id = user.id
+      if (filterMonth > 0) {
+        const lastDay = new Date(filterYear, filterMonth, 0).getDate()
+        params.start_date = `${filterYear}-${String(filterMonth).padStart(2, "0")}-01`
+        params.end_date = `${filterYear}-${String(filterMonth).padStart(2, "0")}-${lastDay}`
+      }
       const [lRes, cRes] = await Promise.all([
-        lessonsApi.list(filterClass !== "all" ? { class_id: filterClass } : {}),
+        lessonsApi.list(params),
         classesApi.list(classParams),
       ])
       setLessons(lRes.data); setClasses(cRes.data)
     } finally { setLoading(false) }
   }
 
-  useEffect(() => { load() }, [filterClass])
+  useEffect(() => { load() }, [filterClass, filterMonth, filterYear])
 
   function openEdit(l: Lesson) {
     setEditLesson(l)
@@ -71,6 +91,16 @@ export default function LessonsPage() {
   async function handleDelete(l: Lesson) {
     if (!confirm("Cancelar esta aula?")) return
     await lessonsApi.update(l.id, { status: "cancelled" }); await load()
+  }
+
+  async function handleInlineStatus(l: Lesson, newStatus: string) {
+    setUpdatingStatus(l.id)
+    try {
+      await lessonsApi.update(l.id, { status: newStatus })
+      setLessons(prev => prev.map(x => x.id === l.id ? { ...x, status: newStatus } : x))
+    } catch {
+      toast.error("Erro ao atualizar status")
+    } finally { setUpdatingStatus(null) }
   }
 
   const F = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
@@ -176,12 +206,27 @@ export default function LessonsPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="flex gap-4 mb-4">
+      <div className="flex flex-wrap gap-3 mb-4">
         <Select value={filterClass} onValueChange={setFilterClass}>
-          <SelectTrigger className="w-52"><SelectValue placeholder="Filtrar por turma" /></SelectTrigger>
+          <SelectTrigger className="w-48"><SelectValue placeholder="Filtrar por turma" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas as turmas</SelectItem>
             {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+
+        <Select value={String(filterMonth)} onValueChange={v => setFilterMonth(Number(v))}>
+          <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="0">Todos os meses</SelectItem>
+            {MONTHS.map((m, i) => <SelectItem key={i + 1} value={String(i + 1)}>{m}</SelectItem>)}
+          </SelectContent>
+        </Select>
+
+        <Select value={String(filterYear)} onValueChange={v => setFilterYear(Number(v))}>
+          <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {YEARS.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
@@ -196,9 +241,26 @@ export default function LessonsPage() {
                   <TableCell className="font-medium">{l.class_id ? classMap[l.class_id] ?? "—" : "—"}</TableCell>
                   <TableCell>{l.scheduled_at ? new Date(l.scheduled_at).toLocaleString("pt-BR") : "—"}</TableCell>
                   <TableCell>
-                    <Badge variant={l.status === "completed" ? "default" : l.status === "cancelled" ? "destructive" : "secondary"}>
-                      {l.status ? STATUS_LABEL[l.status] ?? l.status : "—"}
-                    </Badge>
+                    {canManage ? (
+                      <Select
+                        value={l.status ?? "scheduled"}
+                        onValueChange={v => handleInlineStatus(l, v)}
+                        disabled={updatingStatus === l.id}
+                      >
+                        <SelectTrigger className="h-7 text-xs w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="scheduled">Agendada</SelectItem>
+                          <SelectItem value="completed">Concluída</SelectItem>
+                          <SelectItem value="cancelled">Cancelada</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Badge variant={STATUS_VARIANT[l.status ?? "scheduled"] ?? "secondary"}>
+                        {l.status ? STATUS_LABEL[l.status] ?? l.status : "—"}
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell>{l.report ? <Badge variant="outline">Preenchido</Badge> : <span className="text-muted-foreground text-xs">—</span>}</TableCell>
                   <TableCell><div className="flex gap-1">
