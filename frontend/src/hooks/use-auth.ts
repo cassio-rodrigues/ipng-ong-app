@@ -30,7 +30,7 @@ export function useAuth() {
       const meRes = await authApi.me()
       localStorage.setItem("user", JSON.stringify(meRes.data))
       setUser(meRes.data)
-      router.push("/dashboard")
+      router.push("/inicio")
     },
     [router]
   )
