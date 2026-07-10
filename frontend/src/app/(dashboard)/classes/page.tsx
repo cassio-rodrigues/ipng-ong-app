@@ -38,12 +38,14 @@ export default function ClassesPage() {
     try {
       const classParams: Record<string, string> = {}
       if (filterStatus !== "all") classParams.status = filterStatus
-      const [cRes, uRes, usrRes, bRes] = await Promise.all([
-        classesApi.list(classParams), unitsApi.list(), usersApi.list({ limit: 200 }), booksApi.list(),
+      const [cRes, uRes, bRes] = await Promise.all([
+        classesApi.list(classParams), unitsApi.list(), booksApi.list(),
       ])
-      setClasses(cRes.data); setUnits(uRes.data)
-      setTeachers(usrRes.data.filter((u: User) => u.role === "teacher" || u.role === "coordinator"))
-      setBooks(bRes.data)
+      setClasses(cRes.data); setUnits(uRes.data); setBooks(bRes.data)
+      if (canEdit) {
+        const usrRes = await usersApi.list({ limit: 200 })
+        setTeachers(usrRes.data.filter((u: User) => u.role === "teacher" || u.role === "coordinator"))
+      }
     } finally { setLoading(false) }
   }
 
