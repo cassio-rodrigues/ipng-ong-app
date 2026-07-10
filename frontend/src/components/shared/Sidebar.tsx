@@ -52,8 +52,10 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex flex-col h-full">
       <div className="px-6 py-4 border-b border-sidebar-border">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.png" alt="IPNG" className="h-12 w-auto object-contain" />
+        <Link href="/inicio" onClick={onNavigate}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="IPNG" className="h-12 w-auto object-contain" />
+        </Link>
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
@@ -114,8 +116,10 @@ export function MobileHeader() {
         <Button variant="ghost" size="icon" onClick={() => setOpen(true)} className="text-sidebar-foreground">
           <Menu className="size-5" />
         </Button>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.png" alt="IPNG" className="h-8 w-auto object-contain" />
+        <Link href="/inicio">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="IPNG" className="h-8 w-auto object-contain" />
+        </Link>
       </header>
 
       <Sheet open={open} onOpenChange={setOpen}>
