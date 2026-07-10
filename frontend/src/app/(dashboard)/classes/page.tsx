@@ -21,7 +21,7 @@ const LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"]
 const EMPTY = { name: "", level: "", unit_id: "", main_teacher_id: "", book_id: "", start_date: "", end_date: "", status: "active" }
 
 export default function ClassesPage() {
-  const { canEdit } = useAuth()
+  const { canEdit, user } = useAuth()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [classes, setClasses] = useState<Class_[]>([])
   const [units, setUnits] = useState<Unit[]>([])
@@ -42,14 +42,14 @@ export default function ClassesPage() {
         classesApi.list(classParams), unitsApi.list(), booksApi.list(),
       ])
       setClasses(cRes.data); setUnits(uRes.data); setBooks(bRes.data)
-      if (canEdit) {
+      if (user?.role && user.role !== "teacher") {
         const usrRes = await usersApi.list({ limit: 200 })
         setTeachers(usrRes.data.filter((u: User) => u.role === "teacher" || u.role === "coordinator"))
       }
     } finally { setLoading(false) }
   }
 
-  useEffect(() => { load() }, [filterStatus])
+  useEffect(() => { load() }, [filterStatus, user?.role])
 
   function openEdit(c: Class_) {
     setEditClass(c)

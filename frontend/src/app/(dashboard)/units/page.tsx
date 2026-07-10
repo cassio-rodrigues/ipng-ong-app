@@ -19,7 +19,7 @@ const UNIT_HEADERS = ["Nome", "Endereço", "Coordenador (email)"]
 const EMPTY = { name: "", address: "", coordinator_id: "" }
 
 export default function UnitsPage() {
-  const { canEdit } = useAuth()
+  const { canEdit, user } = useAuth()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [units, setUnits] = useState<Unit[]>([])
   const [coordinators, setCoordinators] = useState<User[]>([])
@@ -31,13 +31,16 @@ export default function UnitsPage() {
 
   async function load() {
     try {
-      const [uRes, usrRes] = await Promise.all([unitsApi.list(), usersApi.list({ limit: 200 })])
+      const uRes = await unitsApi.list()
       setUnits(uRes.data)
-      setCoordinators(usrRes.data.filter((u: User) => u.role === "coordinator" || u.role === "admin"))
+      if (user?.role && user.role !== "teacher") {
+        const usrRes = await usersApi.list({ limit: 200 })
+        setCoordinators(usrRes.data.filter((u: User) => u.role === "coordinator" || u.role === "admin"))
+      }
     } finally { setLoading(false) }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [user?.role])
 
   function openEdit(u: Unit) {
     setEditUnit(u); setForm({ name: u.name ?? "", address: u.address ?? "", coordinator_id: u.coordinator_id ?? "" })
