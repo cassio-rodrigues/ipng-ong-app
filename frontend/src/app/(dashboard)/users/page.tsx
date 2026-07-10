@@ -18,6 +18,11 @@ import { toast } from "sonner"
 const USER_HEADERS = ["Nome", "Email", "Senha", "Perfil (admin/coordinator/teacher)", "Telefone", "Nascimento (DD/MM/AAAA)", "Gênero (M/F/O)"]
 
 const ROLE_LABEL: Record<string, string> = { admin: "Admin", coordinator: "Coordenador", teacher: "Professor" }
+const ATRIBUICOES_OPTS = [
+  { value: "admin",       label: "Admin" },
+  { value: "coordinator", label: "Coordenador" },
+  { value: "teacher",     label: "Professor" },
+]
 const EMPTY = { name: "", email: "", password: "", role: "teacher", telefone: "", gender: "", birth_date: "", status: "active" }
 
 export default function UsersPage() {
@@ -29,6 +34,7 @@ export default function UsersPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [editUser, setEditUser] = useState<User | null>(null)
   const [form, setForm] = useState({ ...EMPTY })
+  const [atribuicoes, setAtribuicoes] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
 
   async function load() {
@@ -43,20 +49,25 @@ export default function UsersPage() {
   function openEdit(u: User) {
     setEditUser(u)
     setForm({ name: u.name ?? "", email: u.email ?? "", password: "", role: u.role ?? "teacher", telefone: u.telefone ?? "", gender: u.gender ?? "", birth_date: u.birth_date ? u.birth_date.slice(0, 10) : "", status: u.status ?? "active" })
+    setAtribuicoes(u.atribuicoes ?? [])
+  }
+
+  function toggleAtribuicao(val: string) {
+    setAtribuicoes(prev => prev.includes(val) ? prev.filter(x => x !== val) : [...prev, val])
   }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault(); setSaving(true)
     try {
-      await usersApi.create({ ...form, birth_date: form.birth_date || undefined, gender: form.gender || undefined })
-      setCreateOpen(false); setForm({ ...EMPTY }); await load()
+      await usersApi.create({ ...form, birth_date: form.birth_date || undefined, gender: form.gender || undefined, atribuicoes: atribuicoes.length ? atribuicoes : null })
+      setCreateOpen(false); setForm({ ...EMPTY }); setAtribuicoes([]); await load()
     } finally { setSaving(false) }
   }
 
   async function handleEdit(e: React.FormEvent) {
     e.preventDefault(); if (!editUser) return; setSaving(true)
     try {
-      const payload: Record<string, unknown> = { name: form.name, email: form.email, role: form.role, telefone: form.telefone, status: form.status, gender: form.gender || undefined, birth_date: form.birth_date || undefined }
+      const payload: Record<string, unknown> = { name: form.name, email: form.email, role: form.role, telefone: form.telefone, status: form.status, gender: form.gender || undefined, birth_date: form.birth_date || undefined, atribuicoes: atribuicoes.length ? atribuicoes : null }
       if (form.password) payload.password = form.password
       await usersApi.update(editUser.id, payload)
       setEditUser(null); await load()
@@ -162,6 +173,26 @@ export default function UsersPage() {
           </div>
         )}
       </div>
+      <div className="space-y-1.5">
+        <Label>Atribuições</Label>
+        <div className="flex flex-wrap gap-2 pt-1">
+          {ATRIBUICOES_OPTS.map(opt => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => toggleAtribuicao(opt.value)}
+              className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                atribuicoes.includes(opt.value)
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background text-muted-foreground border-border hover:border-primary/50"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        <p className="text-[11px] text-muted-foreground">Selecione uma ou mais atribuições adicionais ao perfil principal.</p>
+      </div>
     </div>
   )
 
@@ -176,7 +207,7 @@ export default function UsersPage() {
             <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}><Upload className="size-4 mr-2" />Importar</Button>
             <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImport} />
           </>}
-          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+          <Dialog open={createOpen} onOpenChange={o => { setCreateOpen(o); if (o) setAtribuicoes([]) }}>
           {canEdit && <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Novo usuário</Button></DialogTrigger>}
           <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle>Novo usuário</DialogTitle></DialogHeader>
@@ -220,7 +251,7 @@ export default function UsersPage() {
         <div className="rounded-md border bg-card overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow><TableHead>Nome</TableHead><TableHead>Email</TableHead><TableHead>Telefone</TableHead><TableHead>Perfil</TableHead><TableHead>Status</TableHead><TableHead className="w-20" /></TableRow>
+              <TableRow><TableHead>Nome</TableHead><TableHead>Email</TableHead><TableHead>Telefone</TableHead><TableHead>Perfil</TableHead><TableHead>Atribuições</TableHead><TableHead>Status</TableHead><TableHead className="w-20" /></TableRow>
             </TableHeader>
             <TableBody>
               {users.map(u => (
@@ -228,7 +259,14 @@ export default function UsersPage() {
                   <TableCell className="font-medium">{u.name ?? "—"}</TableCell>
                   <TableCell>{u.email ?? "—"}</TableCell>
                   <TableCell>{u.telefone ?? "—"}</TableCell>
-                  <TableCell>{u.role ? ROLE_LABEL[u.role] ?? u.role : "—"}</TableCell>
+                  <TableCell>{u.role ? <Badge variant="outline">{ROLE_LABEL[u.role] ?? u.role}</Badge> : "—"}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {u.atribuicoes?.length
+                        ? u.atribuicoes.map(a => <Badge key={a} variant="secondary">{ROLE_LABEL[a] ?? a}</Badge>)
+                        : <span className="text-muted-foreground text-xs">—</span>}
+                    </div>
+                  </TableCell>
                   <TableCell><Badge variant={u.status === "active" ? "default" : "secondary"}>{u.status === "active" ? "Ativo" : "Inativo"}</Badge></TableCell>
                   <TableCell>{canEdit && <div className="flex gap-1">
                     <Button variant="ghost" size="icon" onClick={() => openEdit(u)}><Pencil className="size-4" /></Button>
@@ -236,7 +274,7 @@ export default function UsersPage() {
                   </div>}</TableCell>
                 </TableRow>
               ))}
-              {users.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhum usuário encontrado</TableCell></TableRow>}
+              {users.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum usuário encontrado</TableCell></TableRow>}
             </TableBody>
           </Table>
         </div>

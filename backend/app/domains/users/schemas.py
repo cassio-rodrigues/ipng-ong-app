@@ -25,6 +25,7 @@ class UserBase(BaseModel):
     role: str | None = None
     gender: str | None = None
     birth_date: date | None = None
+    atribuicoes: list[str] | None = None
 
 
 class UserCreate(UserBase):
