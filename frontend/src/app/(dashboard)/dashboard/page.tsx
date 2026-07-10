@@ -1,8 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { statsApi, calendarApi, classesApi, studentsApi, lessonsApi, unitsApi } from "@/lib/api"
-import type { CalendarEvent, Class_, Student, Lesson, Unit } from "@/types"
+import { statsApi, calendarApi, classesApi, studentsApi, lessonsApi, unitsApi, usersApi } from "@/lib/api"
+import type { CalendarEvent, Class_, Student, Lesson, Unit, User } from "@/types"
 import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -207,16 +207,21 @@ const ADMIN_TABS: TabItem[] = [
 
 export default function DashboardPage() {
   const { isTeacher } = useAuth()
-  const [data,    setData]    = useState<Stats | null>(null)
-  const [units,   setUnits]   = useState<Unit[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error,   setError]   = useState(false)
-  const [tab,     setTab]     = useState<AdminTab>("alunos")
+  const [data,         setData]         = useState<Stats | null>(null)
+  const [units,        setUnits]        = useState<Unit[]>([])
+  const [teacherUsers, setTeacherUsers] = useState<User[]>([])
+  const [loading,      setLoading]      = useState(true)
+  const [error,        setError]        = useState(false)
+  const [tab,          setTab]          = useState<AdminTab>("alunos")
 
   useEffect(() => {
     if (isTeacher) return
-    Promise.all([statsApi.dashboard(), unitsApi.list()])
-      .then(([sRes, uRes]) => { setData(sRes.data); setUnits(uRes.data) })
+    Promise.all([statsApi.dashboard(), unitsApi.list(), usersApi.list()])
+      .then(([sRes, uRes, userRes]) => {
+        setData(sRes.data)
+        setUnits(uRes.data)
+        setTeacherUsers((userRes.data as User[]).filter(u => u.role === "teacher"))
+      })
       .catch(() => setError(true))
       .finally(() => setLoading(false))
   }, [isTeacher])
@@ -240,6 +245,15 @@ export default function DashboardPage() {
     students.by_gender.F > 0 ? `${students.by_gender.F} F` : null,
     students.by_gender.O > 0 ? `${students.by_gender.O} outro(s)` : null,
   ].filter(Boolean).join(" · ")
+
+  const teacherGender = {
+    M: teacherUsers.filter(u => u.gender === "M").length,
+    F: teacherUsers.filter(u => u.gender === "F").length,
+    O: teacherUsers.filter(u => u.gender !== "M" && u.gender !== "F").length,
+  }
+
+  const activeUnits   = units.filter(u => u.status === "active").length
+  const inactiveUnits = units.length - activeUnits
 
   return (
     <div className="space-y-8">
@@ -301,10 +315,29 @@ export default function DashboardPage() {
 
       {/* Professores */}
       {tab === "professores" && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          <StatCard label="Total de professores" value={teachers.total} icon={Users} color="text-blue-500" />
-          <StatCard label="Ativos"   value={teachers.active}   sub={teachers.inactive > 0 ? `${teachers.inactive} inativos` : "todos ativos"} icon={Users} color="text-green-500" />
-          <StatCard label="Inativos" value={teachers.inactive} icon={UserX} color="text-red-400" />
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <StatCard label="Total de professores" value={teachers.total} icon={Users} color="text-blue-500" />
+            <StatCard label="Ativos"   value={teachers.active}   sub={teachers.inactive > 0 ? `${teachers.inactive} inativos` : "todos ativos"} icon={Users} color="text-green-500" />
+            <StatCard label="Inativos" value={teachers.inactive} icon={UserX} color="text-red-400" />
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Por gênero</CardTitle></CardHeader>
+              <CardContent className="space-y-1.5">
+                {[{ key: "M", label: "Masculino", color: "bg-blue-500" }, { key: "F", label: "Feminino", color: "bg-pink-500" }, { key: "O", label: "Outro", color: "bg-yellow-500" }].map(({ key, label, color }) => {
+                  const n = teacherGender[key as keyof typeof teacherGender]
+                  const pct = teachers.total > 0 ? Math.round(n / teachers.total * 100) : 0
+                  return (
+                    <div key={key} className="flex items-center gap-2 text-xs">
+                      <div className="flex-1">
+                        <div className="flex justify-between mb-0.5"><span className="text-muted-foreground">{label}</span><span className="font-medium">{n}</span></div>
+                        <div className="h-1.5 rounded-full bg-muted overflow-hidden"><div className={`h-full ${color} rounded-full`} style={{ width: `${pct}%` }} /></div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       )}
 
@@ -360,25 +393,37 @@ export default function DashboardPage() {
 
       {/* Unidades */}
       {tab === "unidades" && (
-        <Card>
-          <CardHeader className="pb-3"><div className="flex items-center gap-2"><Building2 className="size-4 text-teal-500" /><CardTitle className="text-base">Unidades cadastradas</CardTitle></div></CardHeader>
-          <CardContent className="p-0">
-            {units.length === 0 ? <p className="text-sm text-muted-foreground px-6 pb-6">Nenhuma unidade cadastrada</p> : (
-              <Table>
-                <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Endereço</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
-                <TableBody>
-                  {units.map(u => (
-                    <TableRow key={u.id}>
-                      <TableCell className="font-medium">{u.name}</TableCell>
-                      <TableCell className="text-muted-foreground text-sm">{u.address ?? "—"}</TableCell>
-                      <TableCell><Badge variant={u.status === "active" ? "default" : "secondary"}>{u.status === "active" ? "Ativa" : "Inativa"}</Badge></TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <StatCard label="Total de unidades" value={units.length}  icon={Building2} color="text-teal-500" />
+            <StatCard label="Ativas"             value={activeUnits}   sub={`${inactiveUnits} inativas`} icon={Building2} color="text-green-500" />
+            <StatCard label="Inativas"           value={inactiveUnits} icon={UserX} color="text-red-400" />
+          </div>
+          <Card>
+            <CardHeader className="pb-3"><div className="flex items-center gap-2"><Building2 className="size-4 text-teal-500" /><CardTitle className="text-base">Unidades cadastradas</CardTitle></div></CardHeader>
+            <CardContent className="p-0">
+              {units.length === 0 ? <p className="text-sm text-muted-foreground px-6 pb-6">Nenhuma unidade cadastrada</p> : (
+                <Table>
+                  <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Endereço</TableHead><TableHead className="w-24">Status</TableHead><TableHead className="w-32" /></TableRow></TableHeader>
+                  <TableBody>
+                    {units.map(u => (
+                      <TableRow key={u.id}>
+                        <TableCell className="font-medium">{u.name}</TableCell>
+                        <TableCell className="text-muted-foreground text-sm">{u.address ?? "—"}</TableCell>
+                        <TableCell><Badge variant={u.status === "active" ? "default" : "secondary"}>{u.status === "active" ? "Ativa" : "Inativa"}</Badge></TableCell>
+                        <TableCell>
+                          <div className="h-2 rounded-full bg-muted overflow-hidden">
+                            <div className={`h-full rounded-full ${u.status === "active" ? "bg-teal-500" : "bg-muted-foreground/30"}`} style={{ width: u.status === "active" ? "100%" : "20%" }} />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {/* Calendário */}
