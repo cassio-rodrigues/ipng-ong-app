@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date as date_type
+
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select, case
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.domains.stats.schemas import (
+    BirthdayPerson,
     ClassCount,
     ClassStats,
     DashboardStats,
@@ -18,6 +21,8 @@ from app.models.attendance import Attendance
 from app.models.class_ import Class_
 from app.models.lesson import Lesson
 from app.models.student import Enrollment, Student
+from app.models.unit import Unit
+from app.models.user import User
 from app.models.user import User
 
 router = APIRouter(prefix="/stats", tags=["Stats"])
@@ -102,3 +107,77 @@ async def dashboard_stats(
         students_per_class=students_per_class,
         absences_per_class=absences_per_class,
     )
+
+
+@router.get("/birthdays", response_model=list[BirthdayPerson])
+async def birthday_list(
+    month: int | None = None,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    target_month = month if month else date_type.today().month
+
+    # Alunos com aniversário no mês — agrega turmas via string_agg
+    student_rows = (await db.execute(
+        select(
+            Student.id,
+            Student.full_name,
+            Student.birth_date,
+            Student.gender,
+            Unit.name.label("unit_name"),
+            func.string_agg(Class_.name, ", ").label("class_names"),
+        )
+        .outerjoin(Unit, Unit.id == Student.unit_id)
+        .outerjoin(
+            Enrollment,
+            (Enrollment.student_id == Student.id) & (Enrollment.status == "active"),
+        )
+        .outerjoin(Class_, Class_.id == Enrollment.class_id)
+        .where(func.extract("month", Student.birth_date) == target_month)
+        .where(Student.status == "active")
+        .group_by(Student.id, Unit.name)
+        .order_by(func.extract("day", Student.birth_date))
+    )).all()
+
+    # Professores/usuários com aniversário no mês
+    teacher_rows = (await db.execute(
+        select(User.id, User.name, User.birth_date, User.gender, User.role)
+        .where(func.extract("month", User.birth_date) == target_month)
+        .where(User.status == "active")
+        .order_by(func.extract("day", User.birth_date))
+    )).all()
+
+    result: list[BirthdayPerson] = []
+
+    for r in student_rows:
+        if not r.birth_date:
+            continue
+        result.append(BirthdayPerson(
+            id=str(r.id),
+            name=r.full_name or "—",
+            type="student",
+            birth_date=r.birth_date.isoformat(),
+            day=r.birth_date.day,
+            gender=r.gender,
+            classes=[c.strip() for c in r.class_names.split(",")] if r.class_names else [],
+            unit=r.unit_name,
+            role=None,
+        ))
+
+    for r in teacher_rows:
+        if not r.birth_date:
+            continue
+        result.append(BirthdayPerson(
+            id=str(r.id),
+            name=r.name or "—",
+            type="teacher",
+            birth_date=r.birth_date.isoformat(),
+            day=r.birth_date.day,
+            gender=r.gender,
+            classes=[],
+            unit=None,
+            role=r.role,
+        ))
+
+    result.sort(key=lambda x: x.day)
+    return result

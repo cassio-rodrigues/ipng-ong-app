@@ -15,6 +15,7 @@ import {
   CalendarDays,
   BookMarked,
   ScrollText,
+  Cake,
 } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 
@@ -26,7 +27,8 @@ const allItems = [
   { href: "/assessments", label: "Avaliações",   icon: Star,            color: "bg-yellow-500", teacherHidden: false },
   { href: "/activities",  label: "Atividades",   icon: Zap,             color: "bg-cyan-500",   teacherHidden: false },
   { href: "/highlights",  label: "Destaques",    icon: Trophy,          color: "bg-amber-500",  teacherHidden: false },
-  { href: "/calendar",    label: "Calendário",   icon: CalendarDays,    color: "bg-sky-500",    teacherHidden: false },
+  { href: "/calendar",        label: "Calendário",     icon: CalendarDays, color: "bg-sky-500",    teacherHidden: false },
+  { href: "/aniversariantes", label: "Aniversariantes", icon: Cake,         color: "bg-pink-500",   teacherHidden: false },
   { href: "/users",       label: "Usuários",     icon: Users,           color: "bg-indigo-500", teacherHidden: true  },
   { href: "/units",       label: "Unidades",     icon: Building2,       color: "bg-teal-500",   teacherHidden: true  },
   { href: "/books",       label: "Livros",       icon: BookOpen,        color: "bg-lime-500",   teacherHidden: true  },

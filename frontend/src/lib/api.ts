@@ -205,4 +205,5 @@ export const auditApi = {
 // Stats
 export const statsApi = {
   dashboard: () => api.get("/stats/dashboard"),
+  birthdays: (month?: number) => api.get("/stats/birthdays", { params: month ? { month } : {} }),
 }

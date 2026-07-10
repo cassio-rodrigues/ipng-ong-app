@@ -40,3 +40,15 @@ class DashboardStats(BaseModel):
     classes: ClassStats
     students_per_class: list[ClassCount]
     absences_per_class: list[ClassCount]
+
+
+class BirthdayPerson(BaseModel):
+    id: str
+    name: str
+    type: str          # "student" | "teacher"
+    birth_date: str    # YYYY-MM-DD
+    day: int
+    gender: str | None
+    classes: list[str]  # nomes das turmas (alunos)
+    unit: str | None    # nome da unidade (alunos)
+    role: str | None    # role (professores)

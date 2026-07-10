@@ -20,6 +20,7 @@ import {
   LogOut,
   BookMarked,
   Menu,
+  Cake,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/hooks/use-auth"
@@ -38,8 +39,9 @@ const allNavItems = [
   { href: "/assessments", label: "Avaliações", icon: Star, teacherHidden: false },
   { href: "/activities", label: "Atividades", icon: Zap, teacherHidden: false },
   { href: "/highlights", label: "Destaques", icon: Trophy, teacherHidden: false },
-  { href: "/calendar", label: "Calendário", icon: CalendarDays, teacherHidden: false },
-  { href: "/loans", label: "Biblioteca", icon: BookMarked, teacherHidden: true },
+  { href: "/calendar",        label: "Calendário",     icon: CalendarDays, teacherHidden: false },
+  { href: "/aniversariantes", label: "Aniversariantes", icon: Cake,         teacherHidden: false },
+  { href: "/loans",           label: "Biblioteca",      icon: BookMarked,   teacherHidden: true  },
   { href: "/audit", label: "Auditoria", icon: ScrollText, teacherHidden: true },
 ]
 
