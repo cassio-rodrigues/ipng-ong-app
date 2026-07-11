@@ -273,8 +273,6 @@ make seed
 | Frontend | http://localhost:3001 |
 | Backend (Swagger) | http://localhost:8000/docs |
 
-**Login padrão:** `admin@ipng.org` / `admin123`
-
 ---
 
 ## Como fazer deploy em produção
