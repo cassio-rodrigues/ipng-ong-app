@@ -23,7 +23,20 @@ const EMPTY = {
   terms_accepted: "", image_consent: "",
 }
 
-const STUDENT_HEADERS = ["Nome completo", "Email", "Telefone", "Nascimento (DD/MM/AAAA)", "Gênero (M/F/O)", "Unidade"]
+const STUDENT_HEADERS = [
+  "Nome completo", "Email", "Telefone", "Nascimento (DD/MM/AAAA)", "Gênero (M/F/O)", "Unidade",
+  "Endereço", "RG", "CPF",
+  "Escolaridade (fundamental_incompleto/fundamental_completo/medio_incompleto/medio_completo/superior_incompleto/superior_completo/pos_graduacao)",
+  "Nome do responsável", "RG do responsável", "CPF do responsável",
+  "Aceite de termos (Sim/Não)", "Autorização de imagem (Sim/Não)",
+]
+
+function parseSimNao(val: unknown): boolean | undefined {
+  const s = String(val ?? "").trim().toLowerCase()
+  if (s === "sim") return true
+  if (s === "não" || s === "nao") return false
+  return undefined
+}
 
 export default function StudentsPage() {
   const { canEdit, isTeacher, user } = useAuth()
@@ -147,6 +160,15 @@ export default function StudentsPage() {
       "Nascimento (DD/MM/AAAA)": s.birth_date ? new Date(s.birth_date).toLocaleDateString("pt-BR") : "",
       "Gênero (M/F/O)": s.gender ?? "",
       "Unidade": units.find(u => u.id === s.unit_id)?.name ?? "",
+      "Endereço": s.address ?? "",
+      "RG": s.rg ?? "",
+      "CPF": s.cpf ?? "",
+      "Escolaridade (fundamental_incompleto/fundamental_completo/medio_incompleto/medio_completo/superior_incompleto/superior_completo/pos_graduacao)": s.education_level ?? "",
+      "Nome do responsável": s.guardian_name ?? "",
+      "RG do responsável": s.guardian_rg ?? "",
+      "CPF do responsável": s.guardian_cpf ?? "",
+      "Aceite de termos (Sim/Não)": s.terms_accepted === true ? "Sim" : s.terms_accepted === false ? "Não" : "",
+      "Autorização de imagem (Sim/Não)": s.image_consent === true ? "Sim" : s.image_consent === false ? "Não" : "",
     })), "alunos")
   }
 
@@ -166,6 +188,15 @@ export default function StudentsPage() {
           birth_date: fmtDate(row["Nascimento (DD/MM/AAAA)"]),
           gender: row["Gênero (M/F/O)"] || undefined,
           unit_id: unitNameMap[String(row["Unidade"] ?? "").toLowerCase()] || undefined,
+          address: row["Endereço"] || undefined,
+          rg: row["RG"] || undefined,
+          cpf: row["CPF"] || undefined,
+          education_level: row["Escolaridade (fundamental_incompleto/fundamental_completo/medio_incompleto/medio_completo/superior_incompleto/superior_completo/pos_graduacao)"] || undefined,
+          guardian_name: row["Nome do responsável"] || undefined,
+          guardian_rg: row["RG do responsável"] || undefined,
+          guardian_cpf: row["CPF do responsável"] || undefined,
+          terms_accepted: parseSimNao(row["Aceite de termos (Sim/Não)"]),
+          image_consent: parseSimNao(row["Autorização de imagem (Sim/Não)"]),
         })
         ok++
       } catch { fail++ }

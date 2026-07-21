@@ -15,7 +15,7 @@ import { useAuth } from "@/hooks/use-auth"
 import { exportToExcel, downloadTemplate, parseExcel, fmtDateTime } from "@/lib/excel"
 import { toast } from "sonner"
 
-const CALENDAR_HEADERS = ["Título", "Tipo (holiday/institutional/class_event)", "Início (DD/MM/AAAA HH:MM)", "Fim (DD/MM/AAAA HH:MM)", "Visibilidade (all/teachers/coordinators)", "Descrição"]
+const CALENDAR_HEADERS = ["Título", "Tipo (holiday/institutional/class_event)", "Início (DD/MM/AAAA HH:MM)", "Fim (DD/MM/AAAA HH:MM)", "Visibilidade (all/teachers/coordinators)", "Unidade (opcional)", "Descrição"]
 
 // Exibe data/hora do ISO sem converter para timezone local (evita deslocamento UTC-3)
 function fmtIso(iso: string | null): string {
@@ -75,6 +75,7 @@ export default function CalendarPage() {
   }
 
   const F = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
+  const unitNameMap = Object.fromEntries(units.map(u => [u.name?.toLowerCase() ?? "", u.id]))
 
   function handleExport() {
     exportToExcel(events.map(ev => ({
@@ -83,6 +84,7 @@ export default function CalendarPage() {
       "Início (DD/MM/AAAA HH:MM)": fmtIso(ev.start_date ?? null),
       "Fim (DD/MM/AAAA HH:MM)": fmtIso(ev.end_date ?? null),
       "Visibilidade (all/teachers/coordinators)": ev.visibility ?? "",
+      "Unidade (opcional)": units.find(u => u.id === ev.unit_id)?.name ?? "",
       "Descrição": ev.description ?? "",
     })), "calendario")
   }
@@ -102,6 +104,7 @@ export default function CalendarPage() {
           start_date: fmtDateTime(row["Início (DD/MM/AAAA HH:MM)"]),
           end_date: fmtDateTime(row["Fim (DD/MM/AAAA HH:MM)"]),
           visibility: row["Visibilidade (all/teachers/coordinators)"] || "all",
+          unit_id: unitNameMap[String(row["Unidade (opcional)"] ?? "").toLowerCase()] || undefined,
           description: row["Descrição"] || undefined,
         })
         ok++

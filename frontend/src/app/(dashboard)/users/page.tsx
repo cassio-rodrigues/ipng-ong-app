@@ -15,7 +15,7 @@ import { useAuth } from "@/hooks/use-auth"
 import { exportToExcel, downloadTemplate, parseExcel, fmtDate } from "@/lib/excel"
 import { toast } from "sonner"
 
-const USER_HEADERS = ["Nome", "Email", "Senha", "Perfil (admin/coordinator/teacher)", "Telefone", "Nascimento (DD/MM/AAAA)", "Gênero (M/F/O)"]
+const USER_HEADERS = ["Nome", "Email", "Senha", "Perfil (admin/coordinator/teacher)", "Telefone", "Nascimento (DD/MM/AAAA)", "Gênero (M/F/O)", "Atribuições (admin,coordinator,teacher)"]
 
 const ROLE_LABEL: Record<string, string> = { admin: "Admin", coordinator: "Coordenador", teacher: "Professor" }
 const ATRIBUICOES_OPTS = [
@@ -89,6 +89,7 @@ export default function UsersPage() {
       "Telefone": u.telefone ?? "",
       "Nascimento (DD/MM/AAAA)": u.birth_date ? new Date(u.birth_date).toLocaleDateString("pt-BR") : "",
       "Gênero (M/F/O)": u.gender ?? "",
+      "Atribuições (admin,coordinator,teacher)": u.atribuicoes?.join(",") ?? "",
     })), "usuarios")
   }
 
@@ -102,6 +103,8 @@ export default function UsersPage() {
       const email = String(row["Email"] ?? "").trim()
       const senha = String(row["Senha"] ?? "").trim()
       if (!name || !email || !senha) continue
+      const atribuicoesRow = String(row["Atribuições (admin,coordinator,teacher)"] ?? "")
+        .split(",").map(a => a.trim()).filter(a => ATRIBUICOES_OPTS.some(o => o.value === a))
       try {
         await usersApi.create({
           name,
@@ -111,6 +114,7 @@ export default function UsersPage() {
           telefone: row["Telefone"] || undefined,
           birth_date: fmtDate(row["Nascimento (DD/MM/AAAA)"]),
           gender: row["Gênero (M/F/O)"] || undefined,
+          atribuicoes: atribuicoesRow.length ? atribuicoesRow : null,
         })
         ok++
       } catch { fail++ }
