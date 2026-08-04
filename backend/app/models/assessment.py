@@ -21,6 +21,7 @@ class Assessment(Base):
     semester: Mapped[str | None] = mapped_column(String)
     date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     max_score: Mapped[int | None] = mapped_column(Integer)
+    min_score: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), default=Decimal("4"))
     created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     class_: Mapped["Class_ | None"] = relationship("Class_", foreign_keys=[class_id], lazy="selectin")  # type: ignore[name-defined]

@@ -39,7 +39,7 @@ function parseSimNao(val: unknown): boolean | undefined {
 }
 
 export default function StudentsPage() {
-  const { canEdit, isTeacher, user } = useAuth()
+  const { canEdit, isTeacher, user, loading: authLoading } = useAuth()
   const canManage = canEdit || isTeacher
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [students, setStudents] = useState<Student[]>([])
@@ -53,6 +53,7 @@ export default function StudentsPage() {
   const [enrollClassId, setEnrollClassId] = useState("")
   const [filterUnit, setFilterUnit] = useState("all")
   const [filterStatus, setFilterStatus] = useState("all")
+  const [search, setSearch] = useState("")
   const [form, setForm] = useState({ ...EMPTY })
   const [saving, setSaving] = useState(false)
 
@@ -71,7 +72,7 @@ export default function StudentsPage() {
     } finally { setLoading(false) }
   }
 
-  useEffect(() => { load() }, [filterUnit, filterStatus])
+  useEffect(() => { if (!authLoading) load() }, [filterUnit, filterStatus, authLoading, isTeacher, user?.id])
 
   function openEdit(s: Student) {
     setEditStudent(s)
@@ -149,6 +150,9 @@ export default function StudentsPage() {
   }
 
   const F = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
+  const visibleStudents = students
+    .filter(s => (s.full_name ?? "").toLowerCase().includes(search.trim().toLowerCase()))
+    .sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? "", "pt-BR"))
   const classMap = Object.fromEntries(classes.map(c => [c.id, c.name]))
   const unitNameMap = Object.fromEntries(units.map(u => [u.name?.toLowerCase() ?? "", u.id]))
 
@@ -391,6 +395,12 @@ export default function StudentsPage() {
       </Dialog>
 
       <div className="flex gap-3 mb-4 flex-wrap">
+        <Input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Buscar por nome…"
+          className="w-56"
+        />
         <Select value={filterStatus} onValueChange={setFilterStatus}>
           <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -422,7 +432,7 @@ export default function StudentsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {students.map(s => (
+              {visibleStudents.map(s => (
                 <TableRow key={s.id}>
                   <TableCell className="font-medium">{s.full_name ?? "—"}</TableCell>
                   {!isTeacher && <TableCell>{s.email ?? "—"}</TableCell>}
@@ -441,7 +451,7 @@ export default function StudentsPage() {
                   </div></TableCell>
                 </TableRow>
               ))}
-              {students.length === 0 && <TableRow><TableCell colSpan={isTeacher ? 4 : 6} className="text-center text-muted-foreground py-8">Nenhum aluno encontrado</TableCell></TableRow>}
+              {visibleStudents.length === 0 && <TableRow><TableCell colSpan={isTeacher ? 4 : 6} className="text-center text-muted-foreground py-8">Nenhum aluno encontrado</TableCell></TableRow>}
             </TableBody>
           </Table>
         </div>

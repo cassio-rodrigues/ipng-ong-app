@@ -31,7 +31,7 @@ const currentYear = new Date().getFullYear()
 const YEARS = [currentYear - 1, currentYear, currentYear + 1]
 
 export default function LessonsPage() {
-  const { canEdit, isTeacher, user } = useAuth()
+  const { canEdit, isTeacher, user, loading: authLoading } = useAuth()
   const canManage = canEdit || isTeacher
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [lessons, setLessons] = useState<Lesson[]>([])
@@ -66,7 +66,7 @@ export default function LessonsPage() {
     } finally { setLoading(false) }
   }
 
-  useEffect(() => { load() }, [filterClass, filterMonth, filterYear])
+  useEffect(() => { if (!authLoading) load() }, [filterClass, filterMonth, filterYear, authLoading, isTeacher, user?.id])
 
   function openEdit(l: Lesson) {
     setEditLesson(l)

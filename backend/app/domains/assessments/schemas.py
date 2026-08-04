@@ -34,6 +34,7 @@ class AssessmentBase(BaseModel):
     semester: str | None = None
     date: datetime | None = None
     max_score: int | None = None
+    min_score: Decimal | None = None
 
 
 class AssessmentCreate(AssessmentBase):

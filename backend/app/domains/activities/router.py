@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.deps import check_owner, get_current_user
+from app.core.deps import check_class_access, get_current_user
 from app.domains.activities.schemas import (
     ActivityCreate,
     ActivityResponse,
@@ -60,7 +60,7 @@ async def update(activity_id: uuid.UUID, body: ActivityUpdate, db: AsyncSession 
     activity = await get_activity(db, activity_id)
     if not activity:
         raise HTTPException(status_code=404, detail="Atividade não encontrada")
-    check_owner(activity.created_by, current_user)
+    await check_class_access(db, activity.class_id, current_user, fallback_owner_id=activity.created_by)
     return await update_activity(db, activity, body)
 
 
@@ -103,5 +103,5 @@ async def update_highlight_route(
     highlight = result.scalar_one_or_none()
     if not highlight:
         raise HTTPException(status_code=404, detail="Destaque não encontrado")
-    check_owner(highlight.teacher_id, current_user)
+    await check_class_access(db, highlight.class_id, current_user, fallback_owner_id=highlight.teacher_id)
     return await update_highlight(db, highlight, body)

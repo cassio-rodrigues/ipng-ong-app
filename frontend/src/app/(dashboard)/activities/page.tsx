@@ -25,7 +25,7 @@ const getEmpty = () => ({ title: "", class_id: "", type: "participation", descri
 interface Response { student_id: string; status: string; score: string; notes: string }
 
 export default function ActivitiesPage() {
-  const { canEdit, isTeacher, user } = useAuth()
+  const { canEdit, isTeacher, user, loading: authLoading } = useAuth()
   const canManage = canEdit || isTeacher
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [activities, setActivities] = useState<Activity[]>([])
@@ -55,7 +55,7 @@ export default function ActivitiesPage() {
     } finally { setLoading(false) }
   }
 
-  useEffect(() => { load() }, [filterClass])
+  useEffect(() => { if (!authLoading) load() }, [filterClass, authLoading, isTeacher, user?.id])
 
   function openEdit(a: Activity) {
     setEditActivity(a)

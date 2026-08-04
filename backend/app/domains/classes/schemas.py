@@ -40,3 +40,18 @@ class ClassResponse(ClassBase):
     id: uuid.UUID
     status: str | None = None
     assignments: list[ClassAssignmentResponse] = []
+
+
+class ClassStudentSummary(BaseModel):
+    student_id: uuid.UUID
+    full_name: str | None = None
+    attendance_rate: float
+    grade_average: float | None = None
+
+
+class ClassSummary(BaseModel):
+    class_id: uuid.UUID
+    student_count: int
+    attendance_rate: float
+    grade_average: float | None = None
+    students: list[ClassStudentSummary]

@@ -69,6 +69,21 @@ export interface ClassAssignment {
   role: string | null
 }
 
+export interface ClassStudentSummary {
+  student_id: string
+  full_name: string | null
+  attendance_rate: number
+  grade_average: number | null
+}
+
+export interface ClassSummary {
+  class_id: string
+  student_count: number
+  attendance_rate: number
+  grade_average: number | null
+  students: ClassStudentSummary[]
+}
+
 export interface Student {
   id: string
   full_name: string | null
@@ -145,6 +160,7 @@ export interface Assessment {
   semester: string | null
   date: string | null
   max_score: number | null
+  min_score: number | null
   created_by: string | null
   grades: StudentGrade[]
 }

@@ -23,10 +23,10 @@ const TYPE_OPTS = [
   { value: "final", label: "Exame Final" },
 ]
 const today = () => new Date().toISOString().slice(0, 10)
-const getEmpty = () => ({ title: "", class_id: "", type: "", semester: "", max_score: "10", date: `${today()}T00:00` })
+const getEmpty = () => ({ title: "", class_id: "", type: "", semester: "", max_score: "10", min_score: "4", date: `${today()}T00:00` })
 
 export default function AssessmentsPage() {
-  const { canEdit, isTeacher, user } = useAuth()
+  const { canEdit, isTeacher, user, loading: authLoading } = useAuth()
   const canManage = canEdit || isTeacher
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [assessments, setAssessments] = useState<Assessment[]>([])
@@ -53,22 +53,22 @@ export default function AssessmentsPage() {
     } finally { setLoading(false) }
   }
 
-  useEffect(() => { load() }, [filterClass])
+  useEffect(() => { if (!authLoading) load() }, [filterClass, authLoading, isTeacher, user?.id])
 
   function openEdit(a: Assessment) {
     setEditAssessment(a)
-    setForm({ title: a.title ?? "", class_id: a.class_id ?? "", type: a.type ?? "", semester: a.semester ?? "", max_score: String(a.max_score ?? 10), date: a.date ? a.date.slice(0, 16) : "" })
+    setForm({ title: a.title ?? "", class_id: a.class_id ?? "", type: a.type ?? "", semester: a.semester ?? "", max_score: String(a.max_score ?? 10), min_score: String(a.min_score ?? 4), date: a.date ? a.date.slice(0, 16) : "" })
   }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault(); setSaving(true)
-    try { await assessmentsApi.create({ ...form, max_score: Number(form.max_score) }); setCreateOpen(false); setForm(getEmpty()); await load() }
+    try { await assessmentsApi.create({ ...form, max_score: Number(form.max_score), min_score: Number(form.min_score) }); setCreateOpen(false); setForm(getEmpty()); await load() }
     finally { setSaving(false) }
   }
 
   async function handleEdit(e: React.FormEvent) {
     e.preventDefault(); if (!editAssessment) return; setSaving(true)
-    try { await assessmentsApi.update(editAssessment.id, { ...form, max_score: Number(form.max_score) }); setEditAssessment(null); await load() }
+    try { await assessmentsApi.update(editAssessment.id, { ...form, max_score: Number(form.max_score), min_score: Number(form.min_score) }); setEditAssessment(null); await load() }
     finally { setSaving(false) }
   }
 
@@ -144,8 +144,9 @@ export default function AssessmentsPage() {
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5"><Label>Nota máxima</Label><Input type="number" min={1} value={form.max_score} onChange={e => F("max_score", e.target.value)} /></div>
-        <div className="space-y-1.5"><Label>Data</Label><Input type="datetime-local" value={form.date} onChange={e => F("date", e.target.value)} /></div>
+        <div className="space-y-1.5"><Label>Nota mínima p/ aprovação</Label><Input type="number" min={0} step="0.1" value={form.min_score} onChange={e => F("min_score", e.target.value)} /></div>
       </div>
+      <div className="space-y-1.5"><Label>Data</Label><Input type="datetime-local" value={form.date} onChange={e => F("date", e.target.value)} /></div>
     </div>
   )
 

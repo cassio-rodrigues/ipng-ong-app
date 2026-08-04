@@ -7,8 +7,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_role
-from app.domains.classes.schemas import ClassAssignmentBase, ClassAssignmentResponse, ClassCreate, ClassResponse, ClassUpdate
-from app.domains.classes.service import add_assignment, create_class, get_class, get_class_students, list_classes, update_class
+from app.domains.classes.schemas import ClassAssignmentBase, ClassAssignmentResponse, ClassCreate, ClassResponse, ClassSummary, ClassUpdate
+from app.domains.classes.service import (
+    add_assignment,
+    create_class,
+    get_assignment,
+    get_class,
+    get_class_students,
+    get_class_summary,
+    list_classes,
+    remove_assignment,
+    update_class,
+)
 
 router = APIRouter(prefix="/classes", tags=["Classes"])
 
@@ -69,3 +79,24 @@ async def assign_teacher(
     if not obj:
         raise HTTPException(status_code=404, detail="Turma não encontrada")
     return await add_assignment(db, class_id, body)
+
+
+@router.delete("/{class_id}/assignments/{assignment_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def unassign_teacher(
+    class_id: uuid.UUID,
+    assignment_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_role("admin", "coordinator")),
+):
+    assignment = await get_assignment(db, assignment_id)
+    if not assignment or assignment.class_id != class_id:
+        raise HTTPException(status_code=404, detail="Atribuição não encontrada")
+    await remove_assignment(db, assignment)
+
+
+@router.get("/{class_id}/summary", response_model=ClassSummary)
+async def get_summary(class_id: uuid.UUID, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
+    obj = await get_class(db, class_id)
+    if not obj:
+        raise HTTPException(status_code=404, detail="Turma não encontrada")
+    return await get_class_summary(db, class_id)

@@ -18,7 +18,8 @@ interface GradeRow { student_id: string; student_name: string; score: string; fe
 export default function AssessmentGradesPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
-  const { canEdit } = useAuth()
+  const { canEdit, isTeacher } = useAuth()
+  const canManage = canEdit || isTeacher
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [assessment, setAssessment] = useState<Assessment | null>(null)
@@ -100,7 +101,7 @@ export default function AssessmentGradesPage() {
         <div>
           <h1 className="text-2xl font-bold">{assessment.title}</h1>
           <p className="text-sm text-muted-foreground">
-            {assessment.type ?? "—"} · Semestre {assessment.semester ?? "—"} · Nota máx. {assessment.max_score ?? "—"}
+            {assessment.type ?? "—"} · Semestre {assessment.semester ?? "—"} · Nota máx. {assessment.max_score ?? "—"} · Mín. aprovação {assessment.min_score ?? 4}
             {filled > 0 && <> · <span className="text-foreground">Média: {avg}</span></>}
           </p>
         </div>
@@ -108,7 +109,7 @@ export default function AssessmentGradesPage() {
 
       <div className="flex gap-2 mb-3">
         <Button variant="outline" size="sm" onClick={handleExport} disabled={rows.length === 0}><Download className="size-4 mr-2" />Exportar notas</Button>
-        {canEdit && <>
+        {canManage && <>
           <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={rows.length === 0}><Upload className="size-4 mr-2" />Importar notas</Button>
           <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImport} />
         </>}
@@ -127,8 +128,8 @@ export default function AssessmentGradesPage() {
           <TableBody>
             {rows.map((r, i) => {
               const score = r.score !== "" ? Number(r.score) : null
-              const max = assessment.max_score ?? 10
-              const passed = score !== null && score >= max * 0.6
+              const min = assessment.min_score ?? 4
+              const passed = score !== null && score >= min
               return (
                 <TableRow key={r.student_id}>
                   <TableCell className="font-medium">{r.student_name}</TableCell>
@@ -142,11 +143,11 @@ export default function AssessmentGradesPage() {
                       value={r.score}
                       onChange={e => update(i, "score", e.target.value)}
                       placeholder="—"
-                      disabled={!canEdit}
+                      disabled={!canManage}
                     />
                   </TableCell>
                   <TableCell>
-                    <Input className="h-7 text-xs" value={r.feedback} onChange={e => update(i, "feedback", e.target.value)} placeholder="Comentário" disabled={!canEdit} />
+                    <Input className="h-7 text-xs" value={r.feedback} onChange={e => update(i, "feedback", e.target.value)} placeholder="Comentário" disabled={!canManage} />
                   </TableCell>
                   <TableCell className="text-right">
                     {score !== null
@@ -161,7 +162,7 @@ export default function AssessmentGradesPage() {
         </Table>
       </div>
 
-      {rows.length > 0 && canEdit && (
+      {rows.length > 0 && canManage && (
         <Button onClick={saveGrades} disabled={saving}>
           <Save className="size-4 mr-2" />{saving ? "Salvando…" : "Salvar notas"}
         </Button>

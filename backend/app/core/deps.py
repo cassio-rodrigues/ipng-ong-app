@@ -59,3 +59,32 @@ def check_owner(owner_id: uuid.UUID | None, current_user) -> None:
     """Levanta 403 se o usuário não é admin/coordinator e não é o dono do recurso."""
     if not _is_privileged(current_user) and owner_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissão negada")
+
+
+async def check_class_access(
+    db: AsyncSession,
+    class_id: uuid.UUID | None,
+    current_user,
+    fallback_owner_id: uuid.UUID | None = None,
+) -> None:
+    """Levanta 403 se o usuário não é admin/coordinator nem professor (principal ou
+    atribuído) da turma. Sem class_id, cai para a checagem de dono (fallback_owner_id)."""
+    if _is_privileged(current_user):
+        return
+
+    if class_id is not None:
+        from app.models.class_ import Class_, ClassAssignment
+
+        assigned = select(ClassAssignment.class_id).where(ClassAssignment.teacher_id == current_user.id)
+        result = await db.execute(
+            select(Class_.id).where(
+                Class_.id == class_id,
+                (Class_.main_teacher_id == current_user.id) | (Class_.id.in_(assigned)),
+            )
+        )
+        if result.scalar_one_or_none() is not None:
+            return
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissão negada")
+
+    if fallback_owner_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissão negada")

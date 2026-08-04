@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.deps import check_owner, get_current_user, require_role
+from app.core.deps import check_class_access, get_current_user, require_role
 from app.domains.assessments.schemas import AssessmentCreate, AssessmentResponse, AssessmentUpdate, GradeBulkCreate, StudentGradeResponse
 from app.domains.assessments.service import bulk_grades, create_assessment, get_assessment, list_assessments, update_assessment
 
@@ -47,7 +47,7 @@ async def update(assessment_id: uuid.UUID, body: AssessmentUpdate, db: AsyncSess
     assessment = await get_assessment(db, assessment_id)
     if not assessment:
         raise HTTPException(status_code=404, detail="Avaliação não encontrada")
-    check_owner(assessment.created_by, current_user)
+    await check_class_access(db, assessment.class_id, current_user, fallback_owner_id=assessment.created_by)
     return await update_assessment(db, assessment, body)
 
 
@@ -56,5 +56,5 @@ async def post_grades(assessment_id: uuid.UUID, body: GradeBulkCreate, db: Async
     assessment = await get_assessment(db, assessment_id)
     if not assessment:
         raise HTTPException(status_code=404, detail="Avaliação não encontrada")
-    check_owner(assessment.created_by, current_user)
+    await check_class_access(db, assessment.class_id, current_user, fallback_owner_id=assessment.created_by)
     return await bulk_grades(db, assessment_id, body)

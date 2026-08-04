@@ -108,6 +108,9 @@ export const classesApi = {
   getStudents: (id: string) => api.get(`/classes/${id}/students`),
   addAssignment: (id: string, data: object) =>
     api.post(`/classes/${id}/assignments`, data),
+  removeAssignment: (classId: string, assignmentId: string) =>
+    api.delete(`/classes/${classId}/assignments/${assignmentId}`),
+  getSummary: (id: string) => api.get(`/classes/${id}/summary`),
 }
 
 // Students

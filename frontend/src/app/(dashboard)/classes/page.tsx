@@ -10,15 +10,17 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Pencil, Plus, Trash2, Download, Upload, FileSpreadsheet } from "lucide-react"
+import { Pencil, Plus, Trash2, Download, Upload, FileSpreadsheet, ExternalLink } from "lucide-react"
+import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
 import { exportToExcel, downloadTemplate, parseExcel, fmtDate } from "@/lib/excel"
+import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
 const CLASS_HEADERS = ["Nome", "Nível (A1/A2/B1/B2/C1/C2)", "Unidade", "Professor (email)", "Livro", "Início (DD/MM/AAAA)", "Fim (DD/MM/AAAA)"]
 
 const LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"]
-const EMPTY = { name: "", level: "", unit_id: "", main_teacher_id: "", book_id: "", start_date: "", end_date: "", status: "active" }
+const EMPTY = { name: "", level: "", unit_id: "", main_teacher_id: "", book_id: "", start_date: "", end_date: "", status: "active", extra_teacher_ids: [] as string[] }
 
 export default function ClassesPage() {
   const { canEdit, user } = useAuth()
@@ -53,13 +55,29 @@ export default function ClassesPage() {
 
   function openEdit(c: Class_) {
     setEditClass(c)
-    setForm({ name: c.name ?? "", level: c.level ?? "", unit_id: c.unit_id ?? "", main_teacher_id: c.main_teacher_id ?? "", book_id: c.book_id ?? "", start_date: c.start_date ? c.start_date.slice(0, 10) : "", end_date: c.end_date ? c.end_date.slice(0, 10) : "", status: c.status ?? "active" })
+    setForm({
+      name: c.name ?? "", level: c.level ?? "", unit_id: c.unit_id ?? "", main_teacher_id: c.main_teacher_id ?? "",
+      book_id: c.book_id ?? "", start_date: c.start_date ? c.start_date.slice(0, 10) : "", end_date: c.end_date ? c.end_date.slice(0, 10) : "",
+      status: c.status ?? "active", extra_teacher_ids: c.assignments.map(a => a.teacher_id),
+    })
+  }
+
+  function toggleExtraTeacher(id: string) {
+    setForm(f => ({
+      ...f,
+      extra_teacher_ids: f.extra_teacher_ids.includes(id)
+        ? f.extra_teacher_ids.filter(x => x !== id)
+        : [...f.extra_teacher_ids, id],
+    }))
   }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault(); setSaving(true)
     try {
-      await classesApi.create({ name: form.name, level: form.level || undefined, unit_id: form.unit_id || undefined, main_teacher_id: form.main_teacher_id || undefined, book_id: form.book_id || undefined, start_date: form.start_date || undefined, end_date: form.end_date || undefined })
+      const { data } = await classesApi.create({ name: form.name, level: form.level || undefined, unit_id: form.unit_id || undefined, main_teacher_id: form.main_teacher_id || undefined, book_id: form.book_id || undefined, start_date: form.start_date || undefined, end_date: form.end_date || undefined })
+      for (const teacherId of form.extra_teacher_ids) {
+        await classesApi.addAssignment(data.id, { teacher_id: teacherId })
+      }
       setCreateOpen(false); setForm({ ...EMPTY }); await load()
     } finally { setSaving(false) }
   }
@@ -68,6 +86,13 @@ export default function ClassesPage() {
     e.preventDefault(); if (!editClass) return; setSaving(true)
     try {
       await classesApi.update(editClass.id, { name: form.name, level: form.level || undefined, unit_id: form.unit_id || undefined, main_teacher_id: form.main_teacher_id || undefined, book_id: form.book_id || undefined, start_date: form.start_date || undefined, end_date: form.end_date || undefined, status: form.status })
+
+      const existingIds = editClass.assignments.map(a => a.teacher_id)
+      const toAdd = form.extra_teacher_ids.filter(id => !existingIds.includes(id))
+      const toRemove = editClass.assignments.filter(a => !form.extra_teacher_ids.includes(a.teacher_id))
+      for (const teacherId of toAdd) await classesApi.addAssignment(editClass.id, { teacher_id: teacherId })
+      for (const a of toRemove) await classesApi.removeAssignment(editClass.id, a.id)
+
       setEditClass(null); await load()
     } finally { setSaving(false) }
   }
@@ -143,10 +168,34 @@ export default function ClassesPage() {
       </div>
       <div className="space-y-1.5">
         <Label>Professor principal</Label>
-        <Select value={form.main_teacher_id} onValueChange={v => F("main_teacher_id", v)}>
+        <Select
+          value={form.main_teacher_id}
+          onValueChange={v => setForm(f => ({ ...f, main_teacher_id: v, extra_teacher_ids: f.extra_teacher_ids.filter(id => id !== v) }))}
+        >
           <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
           <SelectContent>{teachers.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
         </Select>
+      </div>
+      <div className="space-y-1.5">
+        <Label>Professores adicionais</Label>
+        <div className="flex flex-wrap gap-2">
+          {teachers.filter(t => t.id !== form.main_teacher_id).map(t => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => toggleExtraTeacher(t.id)}
+              className={cn(
+                "px-3 py-1 rounded-full text-xs border transition-colors",
+                form.extra_teacher_ids.includes(t.id)
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "border-input text-muted-foreground hover:border-primary"
+              )}
+            >
+              {t.name}
+            </button>
+          ))}
+          {teachers.length === 0 && <span className="text-xs text-muted-foreground">Nenhum professor cadastrado</span>}
+        </div>
       </div>
       <div className="space-y-1.5">
         <Label>Livro base</Label>
@@ -167,6 +216,7 @@ export default function ClassesPage() {
             <SelectContent>
               <SelectItem value="active">Ativa</SelectItem>
               <SelectItem value="inactive">Inativa</SelectItem>
+              <SelectItem value="completed">Concluída</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -221,6 +271,7 @@ export default function ClassesPage() {
             <SelectItem value="all">Todas</SelectItem>
             <SelectItem value="active">Ativas</SelectItem>
             <SelectItem value="inactive">Inativas</SelectItem>
+            <SelectItem value="completed">Concluídas</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -240,11 +291,20 @@ export default function ClassesPage() {
                     {c.start_date ? new Date(c.start_date).toLocaleDateString("pt-BR") : "—"}
                     {c.end_date ? ` – ${new Date(c.end_date).toLocaleDateString("pt-BR")}` : ""}
                   </TableCell>
-                  <TableCell><Badge variant={c.status === "active" ? "default" : "secondary"}>{c.status === "active" ? "Ativa" : "Inativa"}</Badge></TableCell>
-                  <TableCell>{canEdit && <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => openEdit(c)}><Pencil className="size-4" /></Button>
-                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(c)}><Trash2 className="size-4" /></Button>
-                  </div>}</TableCell>
+                  <TableCell>
+                    <Badge variant={c.status === "active" ? "default" : c.status === "completed" ? "outline" : "secondary"}>
+                      {c.status === "active" ? "Ativa" : c.status === "completed" ? "Concluída" : "Inativa"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell><div className="flex gap-1">
+                    <Button variant="ghost" size="icon" title="Ver detalhes" asChild>
+                      <Link href={`/classes/${c.id}`}><ExternalLink className="size-4" /></Link>
+                    </Button>
+                    {canEdit && <>
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(c)}><Pencil className="size-4" /></Button>
+                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(c)}><Trash2 className="size-4" /></Button>
+                    </>}
+                  </div></TableCell>
                 </TableRow>
               ))}
               {classes.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhuma turma cadastrada</TableCell></TableRow>}

@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.deps import check_owner, get_current_user, require_role
+from app.core.deps import check_class_access, get_current_user, require_role
 from app.domains.lessons.schemas import (
     LessonCreate,
     LessonMaterialBase,
@@ -55,7 +55,7 @@ async def update(lesson_id: uuid.UUID, body: LessonUpdate, db: AsyncSession = De
     lesson = await get_lesson(db, lesson_id)
     if not lesson:
         raise HTTPException(status_code=404, detail="Aula não encontrada")
-    check_owner(lesson.teacher_id, current_user)
+    await check_class_access(db, lesson.class_id, current_user, fallback_owner_id=lesson.teacher_id)
     return await update_lesson(db, lesson, body)
 
 
@@ -64,7 +64,7 @@ async def create_report(lesson_id: uuid.UUID, body: LessonReportBase, db: AsyncS
     lesson = await get_lesson(db, lesson_id)
     if not lesson:
         raise HTTPException(status_code=404, detail="Aula não encontrada")
-    check_owner(lesson.teacher_id, current_user)
+    await check_class_access(db, lesson.class_id, current_user, fallback_owner_id=lesson.teacher_id)
     return await upsert_report(db, lesson_id, body)
 
 
@@ -73,5 +73,5 @@ async def add_material_route(lesson_id: uuid.UUID, body: LessonMaterialBase, db:
     lesson = await get_lesson(db, lesson_id)
     if not lesson:
         raise HTTPException(status_code=404, detail="Aula não encontrada")
-    check_owner(lesson.teacher_id, current_user)
+    await check_class_access(db, lesson.class_id, current_user, fallback_owner_id=lesson.teacher_id)
     return await add_material(db, lesson_id, body)

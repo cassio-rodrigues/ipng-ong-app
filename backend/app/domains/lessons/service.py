@@ -3,11 +3,12 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.domains.lessons.schemas import LessonCreate, LessonMaterialBase, LessonReportBase, LessonUpdate
+from app.models.class_ import Class_, ClassAssignment
 from app.models.lesson import Lesson, LessonMaterial, LessonReport
 
 
@@ -25,7 +26,11 @@ async def list_lessons(
     if class_id:
         q = q.where(Lesson.class_id == class_id)
     if teacher_id:
-        q = q.where(Lesson.teacher_id == teacher_id)
+        assigned = select(ClassAssignment.class_id).where(ClassAssignment.teacher_id == teacher_id)
+        teacher_classes = select(Class_.id).where(
+            or_(Class_.main_teacher_id == teacher_id, Class_.id.in_(assigned))
+        )
+        q = q.where(or_(Lesson.teacher_id == teacher_id, Lesson.class_id.in_(teacher_classes)))
     if status:
         q = q.where(Lesson.status == status)
     if start_date:
