@@ -48,9 +48,9 @@ Internet
     ▼
  Nginx (80/443)
     │
-    ├── gestaoipng.com.br ──────► Frontend (Next.js :3000)
-    │                                        │
-    └── api.gestaoipng.com.br ──► Backend  (FastAPI :8000)
+    ├── gestao.inglesparanossagente.org ──────► Frontend (Next.js :3000)
+    │                                                      │
+    └── api.gestao.inglesparanossagente.org ──► Backend  (FastAPI :8000)
                                             │
                                        PostgreSQL (:5432)
 ```
@@ -280,7 +280,7 @@ make seed
 ### Pré-requisitos
 - VPS com Ubuntu 22.04
 - Docker instalado (`curl -fsSL https://get.docker.com | sh`)
-- Domínio apontando para o IP do VPS (registros A para `@`, `www` e `api`)
+- Domínio apontando para o IP do VPS (registros A para o domínio/subdomínio e para `api.<domínio>`)
 
 ### 1. Clonar e configurar
 
@@ -297,7 +297,7 @@ Variáveis obrigatórias no `.env`:
 POSTGRES_PASSWORD=senha_forte
 DATABASE_URL=postgresql+asyncpg://ipng_user:senha_forte@db:5432/ipng_db
 SECRET_KEY=<resultado de: openssl rand -hex 32>
-CORS_ORIGINS=["https://seudominio.com","https://www.seudominio.com"]
+CORS_ORIGINS=["https://seudominio.com"]
 NEXT_PUBLIC_API_URL=https://api.seudominio.com
 DOMAIN=seudominio.com
 ```
@@ -314,7 +314,7 @@ Obter certificado SSL (apenas na primeira vez):
 ```bash
 apt install -y certbot
 certbot certonly --standalone --email seu@email.com --agree-tos --no-eff-email \
-  -d seudominio.com -d www.seudominio.com -d api.seudominio.com
+  -d seudominio.com -d api.seudominio.com
 
 docker compose -f docker-compose.prod.yml up -d --force-recreate nginx
 ```
@@ -372,10 +372,10 @@ make prod-logs     # acompanha logs em tempo real
 | Componente | Provedor | Especificação |
 |---|---|---|
 | VPS | Hostinger KVM 1 | Ubuntu 22.04, 1 vCPU, 4GB RAM |
-| Domínio | Hostinger | gestaoipng.com.br |
+| Domínio | inglesparanossagente.org | gestao.inglesparanossagente.org |
 | SSL | Let's Encrypt | Renovação automática (90 dias) |
 
 **URLs de produção:**
-- Sistema: https://gestaoipng.com.br
-- API: https://api.gestaoipng.com.br
-- Swagger: https://api.gestaoipng.com.br/docs
+- Sistema: https://gestao.inglesparanossagente.org
+- API: https://api.gestao.inglesparanossagente.org
+- Swagger: https://api.gestao.inglesparanossagente.org/docs

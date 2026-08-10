@@ -41,7 +41,6 @@ docker compose -f docker-compose.prod.yml run --rm certbot certonly \
     --agree-tos \
     --no-eff-email \
     -d "$DOMAIN" \
-    -d "www.$DOMAIN" \
     -d "api.$DOMAIN"
 
 # 5. Recarrega o Nginx com o certificado real
