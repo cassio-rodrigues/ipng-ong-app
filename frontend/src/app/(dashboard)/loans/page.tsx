@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Combobox } from "@/components/ui/combobox"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { BookOpen, Plus, RotateCcw, AlertCircle } from "lucide-react"
@@ -45,7 +46,6 @@ export default function LoansPage() {
   const [filterStatus, setFilterStatus] = useState("all")
   const [searchStudent, setSearchStudent] = useState("")
   const [searchBook, setSearchBook] = useState("")
-  const [studentQuery, setStudentQuery] = useState("")
   const [form, setForm] = useState({ student_id: "", book_id: "", due_date: "", notes: "" })
   const [saving, setSaving] = useState(false)
 
@@ -80,7 +80,6 @@ export default function LoansPage() {
       toast.success("Empréstimo registrado")
       setCreateOpen(false)
       setForm({ student_id: "", book_id: "", due_date: "", notes: "" })
-      setStudentQuery("")
       await load()
     } catch {
       toast.error("Erro ao registrar empréstimo")
@@ -98,7 +97,7 @@ export default function LoansPage() {
     } finally { setReturning(null) }
   }
 
-  const filteredStudents = students.filter(s => (s.full_name ?? "").toLowerCase().includes(studentQuery.trim().toLowerCase()))
+  const studentOptions = students.map(s => ({ value: s.id, label: s.full_name ?? s.id }))
   const fmt = (d: string | null) => d ? new Date(d).toLocaleDateString("pt-BR") : "—"
   const studentName = (id: string) => students.find(s => s.id === id)?.full_name ?? "—"
   const bookTitle = (id: string) => books.find(b => b.id === id)?.title ?? "—"
@@ -127,7 +126,7 @@ export default function LoansPage() {
           </p>
         </div>
         {canEdit && (
-          <Dialog open={createOpen} onOpenChange={o => { setCreateOpen(o); if (o) setStudentQuery("") }}>
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
               <Button size="sm"><Plus className="size-4 mr-2" />Novo empréstimo</Button>
             </DialogTrigger>
@@ -136,20 +135,13 @@ export default function LoansPage() {
               <form onSubmit={handleCreate} className="space-y-4 mt-2">
                 <div className="space-y-1.5">
                   <Label>Aluno</Label>
-                  <Input
-                    value={studentQuery}
-                    onChange={e => setStudentQuery(e.target.value)}
+                  <Combobox
+                    options={studentOptions}
+                    value={form.student_id}
+                    onValueChange={v => setForm(f => ({ ...f, student_id: v }))}
                     placeholder="Buscar aluno pelo nome…"
-                    className="mb-1.5"
+                    emptyText="Nenhum aluno encontrado"
                   />
-                  <Select value={form.student_id} onValueChange={v => setForm(f => ({ ...f, student_id: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Selecionar aluno" /></SelectTrigger>
-                    <SelectContent>
-                      {filteredStudents.map(s => (
-                        <SelectItem key={s.id} value={s.id}>{s.full_name ?? s.id}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                 </div>
                 <div className="space-y-1.5">
                   <Label>Livro</Label>

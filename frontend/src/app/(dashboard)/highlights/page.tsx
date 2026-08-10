@@ -4,10 +4,10 @@ import { useEffect, useState } from "react"
 import { highlightsApi, classesApi, studentsApi } from "@/lib/api"
 import type { StudentHighlight, Class_, Student } from "@/types"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Combobox } from "@/components/ui/combobox"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Pencil, Plus } from "lucide-react"
@@ -97,7 +97,6 @@ export default function HighlightsPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [editHighlight, setEditHighlight] = useState<StudentHighlight | null>(null)
   const [filterClass, setFilterClass] = useState("all")
-  const [studentQuery, setStudentQuery] = useState("")
   const [form, setForm] = useState({ ...EMPTY })
   const [saving, setSaving] = useState(false)
 
@@ -172,7 +171,7 @@ export default function HighlightsPage() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault(); setSaving(true)
-    try { await highlightsApi.create(buildPayload()); setCreateOpen(false); setForm({ ...EMPTY }); setStudentQuery(""); await load() }
+    try { await highlightsApi.create(buildPayload()); setCreateOpen(false); setForm({ ...EMPTY }); await load() }
     finally { setSaving(false) }
   }
 
@@ -189,7 +188,7 @@ export default function HighlightsPage() {
   const studentMap = Object.fromEntries(students.map(s => [s.id, s.full_name]))
   const reasonLabel = Object.fromEntries(REASONS.map(r => [r.value, r.label]))
   const selectedChannels = form.english_outside_channels.split(",").filter(Boolean)
-  const filteredStudents = students.filter(s => (s.full_name ?? "").toLowerCase().includes(studentQuery.trim().toLowerCase()))
+  const studentOptions = students.map(s => ({ value: s.id, label: s.full_name ?? s.id }))
 
   const formBody = (isEdit = false) => (
     <div className="overflow-y-auto max-h-[70vh] pr-1 space-y-4 mt-2">
@@ -197,15 +196,13 @@ export default function HighlightsPage() {
       {!isEdit && (
         <>
           <Field label="Aluno *">
-            <Input
-              value={studentQuery}
-              onChange={e => setStudentQuery(e.target.value)}
+            <Combobox
+              options={studentOptions}
+              value={form.student_id}
+              onValueChange={v => F("student_id", v)}
               placeholder="Buscar aluno pelo nome…"
-              className="mb-1.5"
+              emptyText="Nenhum aluno encontrado"
             />
-            <Sel value={form.student_id} onValueChange={v => F("student_id", v)}>
-              {filteredStudents.map(s => <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>)}
-            </Sel>
           </Field>
           <Field label="Turma (opcional)">
             <Sel value={form.class_id} onValueChange={v => F("class_id", v)}>
@@ -393,7 +390,7 @@ export default function HighlightsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Destaques de Alunos</h1>
-        <Dialog open={createOpen} onOpenChange={o => { setCreateOpen(o); if (o) setStudentQuery("") }}>
+        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           {canManage && <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Novo destaque</Button></DialogTrigger>}
           <DialogContent className="max-w-xl">
             <DialogHeader><DialogTitle>Registrar destaque</DialogTitle></DialogHeader>

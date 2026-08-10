@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Combobox } from "@/components/ui/combobox"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { UserCheck, ExternalLink, Pencil, Plus, Trash2, Download, Upload, FileSpreadsheet } from "lucide-react"
@@ -104,6 +105,7 @@ export default function LessonsPage() {
   }
 
   const F = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
+  const classOptions = classes.map(c => ({ value: c.id, label: c.name ?? c.id }))
   const classMap = Object.fromEntries(classes.map(c => [c.id, c.name]))
   const classNameMap = Object.fromEntries(classes.map(c => [(c.name ?? "").toLowerCase(), c.id]))
 
@@ -156,10 +158,13 @@ export default function LessonsPage() {
                 <div className="space-y-4 mt-2">
                   <div className="space-y-1.5">
                     <Label>Turma</Label>
-                    <Select value={form.class_id} onValueChange={v => F("class_id", v)}>
-                      <SelectTrigger><SelectValue placeholder="Selecionar turma" /></SelectTrigger>
-                      <SelectContent>{classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-                    </Select>
+                    <Combobox
+                      options={classOptions}
+                      value={form.class_id}
+                      onValueChange={v => F("class_id", v)}
+                      placeholder="Buscar turma pelo nome…"
+                      emptyText="Nenhuma turma encontrada"
+                    />
                   </div>
                   <div className="space-y-1.5"><Label>Data e hora</Label><Input type="datetime-local" value={form.scheduled_at} onChange={e => F("scheduled_at", e.target.value)} required /></div>
                 </div>
@@ -180,10 +185,13 @@ export default function LessonsPage() {
             <div className="space-y-4 mt-2">
               <div className="space-y-1.5">
                 <Label>Turma</Label>
-                <Select value={form.class_id} onValueChange={v => F("class_id", v)}>
-                  <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
-                  <SelectContent>{classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-                </Select>
+                <Combobox
+                  options={classOptions}
+                  value={form.class_id}
+                  onValueChange={v => F("class_id", v)}
+                  placeholder="Buscar turma pelo nome…"
+                  emptyText="Nenhuma turma encontrada"
+                />
               </div>
               <div className="space-y-1.5"><Label>Data e hora</Label><Input type="datetime-local" value={form.scheduled_at} onChange={e => F("scheduled_at", e.target.value)} /></div>
               <div className="space-y-1.5">
