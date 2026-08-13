@@ -33,7 +33,11 @@ DOMAIN=$DOMAIN docker compose -f docker-compose.prod.yml up -d nginx
 
 sleep 3
 
-# 4. Obtém o certificado real via Certbot (validação HTTP-01 pelo Nginx)
+# 4. Remove o certificado temporário — o Certbot não reconhece um diretório
+#    "live" criado manualmente e recusa continuar se ele já existir.
+rm -rf "./certbot/conf/live/$DOMAIN" "./certbot/conf/archive/$DOMAIN" "./certbot/conf/renewal/$DOMAIN.conf"
+
+# 5. Obtém o certificado real via Certbot (validação HTTP-01 pelo Nginx)
 echo "==> Obtendo certificado Let's Encrypt..."
 docker compose -f docker-compose.prod.yml run --rm certbot certonly \
     --webroot -w /var/www/certbot \
@@ -43,7 +47,7 @@ docker compose -f docker-compose.prod.yml run --rm certbot certonly \
     -d "$DOMAIN" \
     -d "api.$DOMAIN"
 
-# 5. Recarrega o Nginx com o certificado real
+# 6. Recarrega o Nginx com o certificado real
 echo "==> Recarregando Nginx com certificado real..."
 docker compose -f docker-compose.prod.yml exec nginx nginx -s reload
 
