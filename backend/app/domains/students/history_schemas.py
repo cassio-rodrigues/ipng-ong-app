@@ -36,6 +36,7 @@ class AttendanceItem(BaseModel):
     lesson_id: uuid.UUID
     status: str | None
     notes: str | None
+    homework_status: str | None = None  # done | not_done | na
     lesson: LessonBrief | None = None
     model_config = {"from_attributes": True}
 

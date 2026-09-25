@@ -2,8 +2,13 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
+
+
+# done = fez, not_done = não fez, na = não se aplica; ausente/None = não verificado
+HomeworkStatus = Literal["done", "not_done", "na"]
 
 
 class AttendanceRecord(BaseModel):
@@ -11,6 +16,7 @@ class AttendanceRecord(BaseModel):
     status: str = "present"
     check_in_time: datetime | None = None
     notes: str | None = None
+    homework_status: HomeworkStatus | None = None
 
 
 class AttendanceBulkCreate(BaseModel):
@@ -25,3 +31,4 @@ class AttendanceResponse(BaseModel):
     status: str | None = None
     check_in_time: datetime | None = None
     notes: str | None = None
+    homework_status: HomeworkStatus | None = None

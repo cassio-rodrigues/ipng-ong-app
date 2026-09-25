@@ -16,8 +16,9 @@ from app.domains.lessons.schemas import (
     LessonReportResponse,
     LessonResponse,
     LessonUpdate,
+    UpcomingLesson,
 )
-from app.domains.lessons.service import add_material, create_lesson, get_lesson, list_lessons, update_lesson, upsert_report
+from app.domains.lessons.service import add_material, create_lesson, get_lesson, list_lessons, list_upcoming, update_lesson, upsert_report
 
 router = APIRouter(prefix="/lessons", tags=["Lessons"])
 
@@ -37,8 +38,15 @@ async def get_lessons(
     return await list_lessons(db, skip, limit, class_id, teacher_id, status, start_date, end_date)
 
 
+# Antes de "/{lesson_id}" para não ser capturada como id
+@router.get("/upcoming", response_model=list[UpcomingLesson])
+async def upcoming(days: int = 7, db: AsyncSession = Depends(get_db), current_user=Depends(get_current_user)):
+    return await list_upcoming(db, current_user, days=max(0, min(days, 31)))
+
+
 @router.post("", response_model=LessonResponse, status_code=status.HTTP_201_CREATED)
-async def create(body: LessonCreate, db: AsyncSession = Depends(get_db), _=Depends(require_role("admin", "coordinator", "teacher"))):
+async def create(body: LessonCreate, db: AsyncSession = Depends(get_db), current_user=Depends(require_role("admin", "coordinator", "teacher"))):
+    await check_class_access(db, body.class_id, current_user)
     return await create_lesson(db, body)
 
 

@@ -1,7 +1,10 @@
-FROM node:22-alpine AS builder
+# Dependências completas — também usado como imagem de dev (docker-compose.yml, target: deps)
+FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
+
+FROM deps AS builder
 COPY . .
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL

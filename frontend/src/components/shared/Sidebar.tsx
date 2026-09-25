@@ -21,15 +21,20 @@ import {
   BookMarked,
   Menu,
   Cake,
+  BellRing,
+  BarChart3,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/hooks/use-auth"
+import { useAlerts } from "@/hooks/use-alerts"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 
 const allNavItems = [
   { href: "/inicio",    label: "Início",    icon: Home,            teacherHidden: false },
+  { href: "/pendencias", label: "Pendências", icon: BellRing,       teacherHidden: false },
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, teacherHidden: false },
+  { href: "/analise",   label: "Análise",   icon: BarChart3,       teacherHidden: true },
   { href: "/users", label: "Usuários", icon: Users, teacherHidden: true },
   { href: "/units", label: "Unidades", icon: Building2, teacherHidden: true },
   { href: "/books", label: "Livros", icon: BookOpen, teacherHidden: true },
@@ -50,6 +55,9 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const { user, logout } = useAuth()
   const isTeacher = user?.role === "teacher"
   const navItems = allNavItems.filter(item => !isTeacher || !item.teacherHidden)
+  const { alerts: allAlerts } = useAlerts()
+  // Oportunidades (severity low, ex.: destaque positivo) não entram no contador vermelho
+  const alerts = allAlerts.filter(a => a.severity !== "low")
 
   return (
     <div className="flex flex-col h-full">
@@ -77,6 +85,11 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
             >
               <Icon className="size-4 shrink-0" />
               {label}
+              {href === "/pendencias" && alerts.length > 0 && (
+                <span className="ml-auto rounded-full bg-red-600 px-2 py-0.5 text-xs font-bold text-white tabular-nums" aria-label={`${alerts.length} pendências`}>
+                  {alerts.length}
+                </span>
+              )}
             </Link>
           )
         })}
@@ -103,7 +116,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
 
 export function Sidebar() {
   return (
-    <aside className="hidden md:flex flex-col w-64 min-h-screen bg-sidebar border-r border-sidebar-border shrink-0">
+    <aside className="hidden md:flex print:!hidden flex-col w-64 min-h-screen bg-sidebar border-r border-sidebar-border shrink-0">
       <NavLinks />
     </aside>
   )
@@ -114,7 +127,7 @@ export function MobileHeader() {
 
   return (
     <>
-      <header className="md:hidden flex items-center gap-3 px-4 py-3 bg-sidebar border-b border-sidebar-border sticky top-0 z-40">
+      <header className="md:hidden print:hidden flex items-center gap-3 px-4 py-3 bg-sidebar border-b border-sidebar-border sticky top-0 z-40">
         <Button variant="ghost" size="icon" onClick={() => setOpen(true)} className="text-sidebar-foreground">
           <Menu className="size-5" />
         </Button>

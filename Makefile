@@ -1,4 +1,4 @@
-.PHONY: up down migrate seed logs shell reset prod-up prod-down prod-logs prod-migrate prod-deploy ssl-init
+.PHONY: up down migrate seed seed-demo logs shell reset prod-up prod-down prod-logs prod-migrate prod-deploy ssl-init
 
 # ── Desenvolvimento ────────────────────────────────────────────────────────────
 
@@ -13,6 +13,10 @@ migrate:
 
 seed:
 	docker compose exec backend python seed.py
+
+# Turmas/alunos/chamadas fictícios para validar a interface (recria a "Unidade Demo")
+seed-demo:
+	docker compose exec backend python seed_demo.py
 
 logs:
 	docker compose logs -f backend

@@ -3,11 +3,11 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.domains.lessons.schemas import LessonCreate, LessonMaterialBase, LessonReportBase, LessonUpdate
+from app.domains.lessons.schemas import LessonCreate, LessonMaterialBase, LessonReportBase, LessonUpdate, UpcomingLesson
 from app.models.class_ import Class_, ClassAssignment
 from app.models.lesson import Lesson, LessonMaterial, LessonReport
 
@@ -86,3 +86,44 @@ async def add_material(db: AsyncSession, lesson_id: uuid.UUID, data: LessonMater
     await db.commit()
     await db.refresh(material)
     return material
+
+
+async def list_upcoming(db: AsyncSession, user, days: int = 7) -> list[UpcomingLesson]:
+    """Aulas de hoje (desde 00:00 no fuso local) até `days` dias à frente, nas turmas visíveis ao usuário."""
+    from app.core.tz import LOCAL_TZ
+    from app.domains.alerts.service import _visible_class_ids
+    from app.models.attendance import Attendance
+
+    local_now = datetime.now(LOCAL_TZ)
+    start = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
+    end = start + timedelta(days=days + 1)
+
+    att_count = (
+        select(Attendance.lesson_id, func.count().label("n"))
+        .group_by(Attendance.lesson_id)
+        .subquery()
+    )
+    stmt = (
+        select(Lesson, Class_.name, Class_.unit_id, func.coalesce(att_count.c.n, 0).label("n"), LessonReport.id.label("report_id"))
+        .join(Class_, Class_.id == Lesson.class_id)
+        .outerjoin(att_count, att_count.c.lesson_id == Lesson.id)
+        .outerjoin(LessonReport, LessonReport.lesson_id == Lesson.id)
+        .where(
+            Lesson.scheduled_at >= start, Lesson.scheduled_at < end,
+            Lesson.status != "cancelled", Class_.status == "active",
+        )
+        .order_by(Lesson.scheduled_at)
+    )
+    class_ids = await _visible_class_ids(db, user)
+    if class_ids is not None:
+        stmt = stmt.where(Lesson.class_id.in_(class_ids))
+
+    rows = (await db.execute(stmt)).all()
+    return [
+        UpcomingLesson(
+            id=r.Lesson.id, class_id=r.Lesson.class_id, class_name=r.name, unit_id=r.unit_id,
+            scheduled_at=r.Lesson.scheduled_at, status=r.Lesson.status,
+            attendance_count=r.n, has_report=r.report_id is not None,
+        )
+        for r in rows
+    ]

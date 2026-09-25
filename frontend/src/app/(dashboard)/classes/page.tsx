@@ -10,17 +10,37 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Pencil, Plus, Trash2, Download, Upload, FileSpreadsheet, ExternalLink } from "lucide-react"
+import { Pencil, Plus, Trash2, Download, Upload, FileSpreadsheet, ExternalLink, AlertTriangle } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
 import { exportToExcel, downloadTemplate, parseExcel, fmtDate } from "@/lib/excel"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { WEEKDAYS, formatSchedule, generateResultMessage, parseWeekday, parseTime } from "@/lib/schedule"
 
-const CLASS_HEADERS = ["Nome", "Nível (A1/A2/B1/B2/C1/C2)", "Unidade", "Professor (email)", "Livro", "Início (DD/MM/AAAA)", "Fim (DD/MM/AAAA)"]
+const COL_DAY = "Dia da aula (segunda…domingo)"
+const COL_START = "Início da aula (HH:MM)"
+const COL_END = "Fim da aula (HH:MM)"
+const CLASS_HEADERS = ["Nome", "Nível (A1/A2/B1/B2/C1/C2)", "Unidade", "Professor (email)", "Livro", "Início (DD/MM/AAAA)", "Fim (DD/MM/AAAA)", COL_DAY, COL_START, COL_END]
 
 const LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"]
-const EMPTY = { name: "", level: "", unit_id: "", main_teacher_id: "", book_id: "", start_date: "", end_date: "", status: "active", extra_teacher_ids: [] as string[] }
+const EMPTY = { name: "", level: "", unit_id: "", main_teacher_id: "", book_id: "", start_date: "", end_date: "", status: "active", extra_teacher_ids: [] as string[], schedule_weekday: "", schedule_start: "", schedule_end: "" }
+
+// Campos de horário fixo para a API ("" = não informado)
+function schedulePayload(f: typeof EMPTY) {
+  return {
+    schedule_weekday: f.schedule_weekday === "" ? undefined : Number(f.schedule_weekday),
+    schedule_start: f.schedule_start || undefined,
+    schedule_end: f.schedule_end || undefined,
+  }
+}
+
+// Com dia e horário definidos, gera as aulas recorrentes e avisa o resultado
+async function generateAfterSave(classId: string, f: typeof EMPTY) {
+  if (f.schedule_weekday === "" || !f.schedule_start) return
+  const { data } = await classesApi.generateLessons(classId)
+  toast.success(generateResultMessage(data))
+}
 
 export default function ClassesPage() {
   const { canEdit, user } = useAuth()
@@ -30,6 +50,9 @@ export default function ClassesPage() {
   const [teachers, setTeachers] = useState<User[]>([])
   const [books, setBooks] = useState<Book[]>([])
   const [filterStatus, setFilterStatus] = useState("all")
+  // Professor vê primeiro as próprias turmas; pode alternar para todas
+  const [onlyMine, setOnlyMine] = useState(true)
+  const isTeacher = user?.role === "teacher"
   const [loading, setLoading] = useState(true)
   const [createOpen, setCreateOpen] = useState(false)
   const [editClass, setEditClass] = useState<Class_ | null>(null)
@@ -40,6 +63,7 @@ export default function ClassesPage() {
     try {
       const classParams: Record<string, string> = {}
       if (filterStatus !== "all") classParams.status = filterStatus
+      if (isTeacher && onlyMine && user?.id) classParams.teacher_id = user.id
       const [cRes, uRes, bRes] = await Promise.all([
         classesApi.list(classParams), unitsApi.list(), booksApi.list(),
       ])
@@ -51,7 +75,7 @@ export default function ClassesPage() {
     } finally { setLoading(false) }
   }
 
-  useEffect(() => { load() }, [filterStatus, user?.role])
+  useEffect(() => { load() }, [filterStatus, user?.role, onlyMine])
 
   function openEdit(c: Class_) {
     setEditClass(c)
@@ -59,6 +83,8 @@ export default function ClassesPage() {
       name: c.name ?? "", level: c.level ?? "", unit_id: c.unit_id ?? "", main_teacher_id: c.main_teacher_id ?? "",
       book_id: c.book_id ?? "", start_date: c.start_date ? c.start_date.slice(0, 10) : "", end_date: c.end_date ? c.end_date.slice(0, 10) : "",
       status: c.status ?? "active", extra_teacher_ids: c.assignments.map(a => a.teacher_id),
+      schedule_weekday: c.schedule_weekday === null ? "" : String(c.schedule_weekday),
+      schedule_start: c.schedule_start?.slice(0, 5) ?? "", schedule_end: c.schedule_end?.slice(0, 5) ?? "",
     })
   }
 
@@ -74,10 +100,11 @@ export default function ClassesPage() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault(); setSaving(true)
     try {
-      const { data } = await classesApi.create({ name: form.name, level: form.level || undefined, unit_id: form.unit_id || undefined, main_teacher_id: form.main_teacher_id || undefined, book_id: form.book_id || undefined, start_date: form.start_date || undefined, end_date: form.end_date || undefined })
+      const { data } = await classesApi.create({ name: form.name, level: form.level || undefined, unit_id: form.unit_id || undefined, main_teacher_id: form.main_teacher_id || undefined, book_id: form.book_id || undefined, start_date: form.start_date || undefined, end_date: form.end_date || undefined, ...schedulePayload(form) })
       for (const teacherId of form.extra_teacher_ids) {
         await classesApi.addAssignment(data.id, { teacher_id: teacherId })
       }
+      await generateAfterSave(data.id, form)
       setCreateOpen(false); setForm({ ...EMPTY }); await load()
     } finally { setSaving(false) }
   }
@@ -85,13 +112,14 @@ export default function ClassesPage() {
   async function handleEdit(e: React.FormEvent) {
     e.preventDefault(); if (!editClass) return; setSaving(true)
     try {
-      await classesApi.update(editClass.id, { name: form.name, level: form.level || undefined, unit_id: form.unit_id || undefined, main_teacher_id: form.main_teacher_id || undefined, book_id: form.book_id || undefined, start_date: form.start_date || undefined, end_date: form.end_date || undefined, status: form.status })
+      await classesApi.update(editClass.id, { name: form.name, level: form.level || undefined, unit_id: form.unit_id || undefined, main_teacher_id: form.main_teacher_id || undefined, book_id: form.book_id || undefined, start_date: form.start_date || undefined, end_date: form.end_date || undefined, status: form.status, ...schedulePayload(form) })
 
       const existingIds = editClass.assignments.map(a => a.teacher_id)
       const toAdd = form.extra_teacher_ids.filter(id => !existingIds.includes(id))
       const toRemove = editClass.assignments.filter(a => !form.extra_teacher_ids.includes(a.teacher_id))
       for (const teacherId of toAdd) await classesApi.addAssignment(editClass.id, { teacher_id: teacherId })
       for (const a of toRemove) await classesApi.removeAssignment(editClass.id, a.id)
+      await generateAfterSave(editClass.id, form)
 
       setEditClass(null); await load()
     } finally { setSaving(false) }
@@ -118,6 +146,9 @@ export default function ClassesPage() {
       "Livro": c.book_id ? books.find(b => b.id === c.book_id)?.title ?? "" : "",
       "Início (DD/MM/AAAA)": c.start_date ? new Date(c.start_date).toLocaleDateString("pt-BR") : "",
       "Fim (DD/MM/AAAA)": c.end_date ? new Date(c.end_date).toLocaleDateString("pt-BR") : "",
+      [COL_DAY]: c.schedule_weekday !== null ? WEEKDAYS[c.schedule_weekday] : "",
+      [COL_START]: c.schedule_start?.slice(0, 5) ?? "",
+      [COL_END]: c.schedule_end?.slice(0, 5) ?? "",
     })), "turmas")
   }
 
@@ -125,12 +156,22 @@ export default function ClassesPage() {
     const file = e.target.files?.[0]
     if (!file) return
     const rows = await parseExcel(file)
-    let ok = 0, fail = 0
-    for (const row of rows) {
+    let ok = 0, fail = 0, lessonsCreated = 0
+    const invalid: string[] = []
+    for (const [idx, row] of rows.entries()) {
       const name = String(row["Nome"] ?? "").trim()
       if (!name) continue
+      // Horário: dia e início vão juntos; valor não reconhecido invalida a linha em vez de importar sem horário
+      const weekday = parseWeekday(row[COL_DAY])
+      const start = parseTime(row[COL_START])
+      const end = parseTime(row[COL_END])
+      if (weekday === undefined || start === undefined || end === undefined || (weekday === null) !== (start === null)) {
+        invalid.push(`linha ${idx + 2} (${name})`)
+        fail++
+        continue
+      }
       try {
-        await classesApi.create({
+        const { data } = await classesApi.create({
           name,
           level: row["Nível (A1/A2/B1/B2/C1/C2)"] || undefined,
           unit_id: unitNameMap[String(row["Unidade"] ?? "").toLowerCase()] || undefined,
@@ -138,11 +179,21 @@ export default function ClassesPage() {
           book_id: bookTitleMap[String(row["Livro"] ?? "").toLowerCase()] || undefined,
           start_date: fmtDate(row["Início (DD/MM/AAAA)"]),
           end_date: fmtDate(row["Fim (DD/MM/AAAA)"]),
+          schedule_weekday: weekday ?? undefined,
+          schedule_start: start ?? undefined,
+          schedule_end: end ?? undefined,
         })
         ok++
+        if (weekday !== null && start) {
+          const { data: gen } = await classesApi.generateLessons(data.id)
+          lessonsCreated += gen.created
+        }
       } catch { fail++ }
     }
-    toast.success(`${ok} importado(s)${fail > 0 ? `, ${fail} com erro` : ""}`)
+    toast.success(`${ok} importado(s)${lessonsCreated ? ` · ${lessonsCreated} aulas geradas` : ""}${fail > 0 ? `, ${fail} com erro` : ""}`)
+    if (invalid.length) {
+      toast.error(`Dia/horário não reconhecido em ${invalid.join(", ")}. Use ex.: "Sábado", "09:00", "11:00" (dia e início juntos).`, { duration: 10000 })
+    }
     await load()
     e.target.value = ""
   }
@@ -207,6 +258,18 @@ export default function ClassesPage() {
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5"><Label>Início</Label><Input type="date" value={form.start_date} onChange={e => F("start_date", e.target.value)} /></div>
         <div className="space-y-1.5"><Label>Fim</Label><Input type="date" value={form.end_date} onChange={e => F("end_date", e.target.value)} /></div>
+      </div>
+      <div className="space-y-1.5">
+        <Label>Aula semanal</Label>
+        <div className="grid grid-cols-3 gap-2">
+          <Select value={form.schedule_weekday} onValueChange={v => F("schedule_weekday", v)}>
+            <SelectTrigger aria-label="Dia da semana"><SelectValue placeholder="Dia" /></SelectTrigger>
+            <SelectContent>{WEEKDAYS.map((d, i) => <SelectItem key={i} value={String(i)}>{d}</SelectItem>)}</SelectContent>
+          </Select>
+          <Input type="time" aria-label="Início" value={form.schedule_start} onChange={e => F("schedule_start", e.target.value)} />
+          <Input type="time" aria-label="Fim" value={form.schedule_end} onChange={e => F("schedule_end", e.target.value)} />
+        </div>
+        <p className="text-xs text-muted-foreground">As aulas são geradas automaticamente até o fim da turma (ou 16 semanas), pulando feriados do calendário.</p>
       </div>
       {isEdit && (
         <div className="space-y-1.5">
@@ -274,19 +337,44 @@ export default function ClassesPage() {
             <SelectItem value="completed">Concluídas</SelectItem>
           </SelectContent>
         </Select>
+        {isTeacher && (
+          <Select value={onlyMine ? "mine" : "all"} onValueChange={v => setOnlyMine(v === "mine")}>
+            <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="mine">Minhas turmas</SelectItem>
+              <SelectItem value="all">Todas as turmas</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {loading ? <p className="text-muted-foreground text-sm">Carregando…</p> : (
         <div className="rounded-md border bg-card overflow-x-auto">
           <Table>
-            <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Nível</TableHead><TableHead>Unidade</TableHead><TableHead>Professor</TableHead><TableHead>Período</TableHead><TableHead>Status</TableHead><TableHead className="w-20" /></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Nível</TableHead><TableHead>Unidade</TableHead><TableHead className="w-20 text-right">Alunos</TableHead><TableHead>Professor</TableHead><TableHead>Horário</TableHead><TableHead>Período</TableHead><TableHead>Status</TableHead><TableHead className="w-20" /></TableRow></TableHeader>
             <TableBody>
               {classes.map(c => (
                 <TableRow key={c.id}>
                   <TableCell className="font-medium">{c.name ?? "—"}</TableCell>
                   <TableCell>{c.level ? <Badge variant="outline">{c.level}</Badge> : "—"}</TableCell>
                   <TableCell>{c.unit_id ? unitMap[c.unit_id] ?? "—" : "—"}</TableCell>
-                  <TableCell>{c.main_teacher_id ? teacherMap[c.main_teacher_id] ?? "—" : "—"}</TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {c.student_count ?? "—"}
+                  </TableCell>
+                  <TableCell>
+                    {c.main_teacher_id
+                      ? teacherMap[c.main_teacher_id] ?? "—"
+                      : c.assignments.length > 0
+                        ? <>{teacherMap[c.assignments[0].teacher_id] ?? "Atribuído"} <span className="text-xs text-muted-foreground">(sem principal)</span></>
+                        : c.status === "active"
+                          ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-red-600 px-2 py-0.5 text-xs font-semibold text-white">
+                              <AlertTriangle className="size-3.5" aria-hidden />Sem professor
+                            </span>
+                          )
+                          : <span className="text-muted-foreground">—</span>}
+                  </TableCell>
+                  <TableCell className="text-sm">{formatSchedule(c) ?? <span className="text-muted-foreground">—</span>}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     {c.start_date ? new Date(c.start_date).toLocaleDateString("pt-BR") : "—"}
                     {c.end_date ? ` – ${new Date(c.end_date).toLocaleDateString("pt-BR")}` : ""}
@@ -307,7 +395,7 @@ export default function ClassesPage() {
                   </div></TableCell>
                 </TableRow>
               ))}
-              {classes.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhuma turma cadastrada</TableCell></TableRow>}
+              {classes.length === 0 && <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Nenhuma turma cadastrada</TableCell></TableRow>}
             </TableBody>
           </Table>
         </div>

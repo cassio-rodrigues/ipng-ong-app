@@ -52,3 +52,43 @@ class BirthdayPerson(BaseModel):
     classes: list[str]  # nomes das turmas (alunos)
     unit: str | None    # nome da unidade (alunos)
     role: str | None    # role (professores)
+    phone: str | None = None  # telefone para contato (WhatsApp)
+
+
+class AnalysisClass(BaseModel):
+    id: str
+    name: str | None
+    level: str | None
+    book: str | None
+
+
+class AnalysisStudent(BaseModel):
+    id: str
+    full_name: str | None
+    gender: str | None
+    birth_date: str | None      # YYYY-MM-DD
+    age: int | None
+    education_level: str | None
+    unit_id: str | None
+    unit_name: str | None
+    status: str | None
+    created_at: str | None
+    classes: list[AnalysisClass]
+    attendance_rate: float | None  # geral, None sem registros
+
+
+class PeriodMetric(BaseModel):
+    current: float
+    previous: float
+
+
+class PeriodStats(BaseModel):
+    period: str
+    start: str
+    end: str
+    previous_start: str
+    previous_end: str
+    new_students: PeriodMetric
+    lessons_given: PeriodMetric      # aulas com presença lançada
+    attendance_rate: PeriodMetric    # % presente+atrasado sobre registros do período
+    absences: PeriodMetric

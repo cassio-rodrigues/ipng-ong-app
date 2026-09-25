@@ -74,6 +74,7 @@ async def get_student_history(db: AsyncSession, student_id: uuid.UUID) -> Studen
             lesson_id=a.lesson_id,
             status=a.status,
             notes=a.notes,
+            homework_status=a.homework_status,
             lesson=LessonBrief(
                 id=lesson.id,
                 scheduled_at=lesson.scheduled_at,

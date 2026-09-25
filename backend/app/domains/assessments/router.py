@@ -31,6 +31,7 @@ async def create(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    await check_class_access(db, body.class_id, current_user)
     return await create_assessment(db, body, current_user.id)
 
 

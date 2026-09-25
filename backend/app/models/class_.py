@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, time
 
-from sqlalchemy import DateTime, ForeignKey, String
+from sqlalchemy import DateTime, ForeignKey, SmallInteger, String, Time
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -22,6 +22,10 @@ class Class_(Base):
     status: Mapped[str | None] = mapped_column(String, default="active")
     start_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     end_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Aula semanal fixa: dia (0 = segunda … 6 = domingo, como date.weekday()) e horário local
+    schedule_weekday: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    schedule_start: Mapped[time | None] = mapped_column(Time, nullable=True)
+    schedule_end: Mapped[time | None] = mapped_column(Time, nullable=True)
 
     unit: Mapped["Unit | None"] = relationship("Unit", foreign_keys=[unit_id], lazy="selectin")  # type: ignore[name-defined]
     main_teacher: Mapped["User | None"] = relationship("User", foreign_keys=[main_teacher_id], lazy="selectin")  # type: ignore[name-defined]

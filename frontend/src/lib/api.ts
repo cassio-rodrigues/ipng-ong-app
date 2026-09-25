@@ -100,7 +100,7 @@ export const booksApi = {
 
 // Classes
 export const classesApi = {
-  list: (params?: { unit_id?: string; status?: string; level?: string; teacher_id?: string }) =>
+  list: (params?: { unit_id?: string; status?: string; level?: string; teacher_id?: string; limit?: number }) =>
     api.get("/classes", { params }),
   get: (id: string) => api.get(`/classes/${id}`),
   create: (data: object) => api.post("/classes", data),
@@ -111,6 +111,7 @@ export const classesApi = {
   removeAssignment: (classId: string, assignmentId: string) =>
     api.delete(`/classes/${classId}/assignments/${assignmentId}`),
   getSummary: (id: string) => api.get(`/classes/${id}/summary`),
+  generateLessons: (id: string, until?: string) => api.post(`/classes/${id}/generate-lessons`, { until: until ?? null }),
 }
 
 // Students
@@ -135,7 +136,11 @@ export const lessonsApi = {
     class_id?: string
     teacher_id?: string
     status?: string
+    start_date?: string
+    end_date?: string
+    limit?: number
   }) => api.get("/lessons", { params }),
+  upcoming: (days = 7) => api.get("/lessons/upcoming", { params: { days } }),
   get: (id: string) => api.get(`/lessons/${id}`),
   create: (data: object) => api.post("/lessons", data),
   update: (id: string, data: object) => api.patch(`/lessons/${id}`, data),
@@ -165,6 +170,7 @@ export const calendarApi = {
     unit_id?: string
     start_date?: string
     end_date?: string
+    limit?: number
   }) => api.get("/calendar/events", { params }),
   create: (data: object) => api.post("/calendar/events", data),
   update: (id: string, data: object) =>
@@ -211,4 +217,17 @@ export const auditApi = {
 export const statsApi = {
   dashboard: () => api.get("/stats/dashboard"),
   birthdays: (month?: number) => api.get("/stats/birthdays", { params: month ? { month } : {} }),
+  analysis: () => api.get("/stats/students-analysis"),
+  period: (period: "30d" | "semester" | "year") => api.get("/stats/period", { params: { period } }),
+}
+
+// Pendências (alertas calculados) e acompanhamentos
+export const alertsApi = {
+  list: (params?: { student_id?: string; class_id?: string; lesson_id?: string }) =>
+    api.get("/alerts", { params }),
+  createFollowup: (data: {
+    alert_type: string; ref_id: string; student_id: string | null
+    resolution: "resolved" | "snoozed"; note?: string; snooze_days?: number
+  }) => api.post("/alerts/followups", data),
+  followups: (student_id: string) => api.get("/alerts/followups", { params: { student_id } }),
 }

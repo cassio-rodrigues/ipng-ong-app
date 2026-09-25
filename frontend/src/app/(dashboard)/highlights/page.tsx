@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Pencil, Plus } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
+import { highlightBadgeClass, HIGHLIGHT_LABEL } from "@/lib/highlights"
 import { cn } from "@/lib/utils"
 
 const REASONS = [
@@ -448,8 +449,8 @@ export default function HighlightsPage() {
                   <TableCell className="font-medium">{studentMap[h.student_id] ?? "—"}</TableCell>
                   <TableCell>{h.class_id ? classMap[h.class_id] ?? "—" : "—"}</TableCell>
                   <TableCell>
-                    <Badge variant={h.highlight_type === "positive" ? "default" : h.highlight_type === "negative" ? "destructive" : "outline"}>
-                      {h.highlight_type === "positive" ? "Positivo" : h.highlight_type === "negative" ? "Negativo" : h.highlight_type ?? "—"}
+                    <Badge className={highlightBadgeClass(h.highlight_type)}>
+                      {HIGHLIGHT_LABEL[h.highlight_type ?? ""] ?? h.highlight_type ?? "—"}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground max-w-48 truncate">

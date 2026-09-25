@@ -55,3 +55,14 @@ class LessonResponse(LessonBase):
     status: str | None = None
     report: LessonReportResponse | None = None
     materials: list[LessonMaterialResponse] = []
+
+
+class UpcomingLesson(BaseModel):
+    id: uuid.UUID
+    class_id: uuid.UUID
+    class_name: str | None = None
+    unit_id: uuid.UUID | None = None
+    scheduled_at: datetime
+    status: str | None = None
+    attendance_count: int = 0
+    has_report: bool = False
