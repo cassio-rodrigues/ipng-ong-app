@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Cake, GraduationCap, Users } from "lucide-react"
+import { WhatsAppButton } from "@/components/shared/WhatsAppButton"
+import { firstName } from "@/lib/whatsapp"
 
 interface BirthdayPerson {
   id: string
@@ -18,6 +20,7 @@ interface BirthdayPerson {
   classes: string[]
   unit: string | null
   role: string | null
+  phone: string | null
 }
 
 const MONTHS = [
@@ -148,6 +151,7 @@ export default function AniversariantesPage() {
                 <TableHead>Unidade</TableHead>
                 <TableHead>Gênero</TableHead>
                 <TableHead className="w-16">Idade</TableHead>
+                <TableHead className="w-32"><span className="sr-only">Parabenizar</span></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -192,6 +196,13 @@ export default function AniversariantesPage() {
                     </TableCell>
                     <TableCell className="tabular-nums text-sm font-medium">
                       {age(p.birth_date)}
+                    </TableCell>
+                    <TableCell>
+                      <WhatsAppButton
+                        phone={p.phone}
+                        label={isToday ? "Parabenizar" : "WhatsApp"}
+                        message={`Feliz aniversário, ${firstName(p.name)}! 🎉 Toda a equipe do Inglês Para Nossa Gente deseja um dia incrível e um ano cheio de conquistas. Happy birthday! 🎂`}
+                      />
                     </TableCell>
                   </TableRow>
                 )

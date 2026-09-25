@@ -131,6 +131,7 @@ async def get_class_summary(db: AsyncSession, class_id: uuid.UUID) -> ClassSumma
             student_id=s.id,
             full_name=s.full_name,
             attendance_rate=rate,
+            attendance_total=total,
             grade_average=round(grade_by_student[s.id], 1) if s.id in grade_by_student else None,
         ))
 
@@ -142,6 +143,20 @@ async def get_class_summary(db: AsyncSession, class_id: uuid.UUID) -> ClassSumma
         class_id=class_id,
         student_count=len(students),
         attendance_rate=class_rate,
+        attendance_total=total_records,
         grade_average=class_grade_average,
         students=student_summaries,
     )
+
+
+async def count_active_students(db: AsyncSession, class_ids: list[uuid.UUID]) -> dict[uuid.UUID, int]:
+    """Nº de alunos ativos com matrícula ativa, por turma."""
+    if not class_ids:
+        return {}
+    rows = (await db.execute(
+        select(Enrollment.class_id, func.count())
+        .join(Student, Student.id == Enrollment.student_id)
+        .where(Enrollment.class_id.in_(class_ids), Enrollment.status == "active", Student.status == "active")
+        .group_by(Enrollment.class_id)
+    )).all()
+    return {cid: n for cid, n in rows}

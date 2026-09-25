@@ -6,9 +6,14 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.deps import get_current_user, require_role
-from app.domains.classes.schemas import ClassAssignmentBase, ClassAssignmentResponse, ClassCreate, ClassResponse, ClassSummary, ClassUpdate
+from app.core.deps import check_class_access, get_current_user, require_role
+from app.domains.classes.schedule import drop_future_empty_lessons, generate_lessons
+from app.domains.classes.schemas import (
+    ClassAssignmentBase, ClassAssignmentResponse, ClassCreate, ClassResponse, ClassSummary, ClassUpdate,
+    GenerateLessonsRequest, GenerateLessonsResult,
+)
 from app.domains.classes.service import (
+    count_active_students,
     add_assignment,
     create_class,
     get_assignment,
@@ -34,7 +39,12 @@ async def get_classes(
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_user),
 ):
-    return await list_classes(db, skip, limit, unit_id, status, level, teacher_id)
+    classes = await list_classes(db, skip, limit, unit_id, status, level, teacher_id)
+    counts = await count_active_students(db, [c.id for c in classes])
+    return [
+        ClassResponse.model_validate(c).model_copy(update={"student_count": counts.get(c.id, 0)})
+        for c in classes
+    ]
 
 
 @router.post("", response_model=ClassResponse, status_code=status.HTTP_201_CREATED)
@@ -60,7 +70,31 @@ async def update(
     obj = await get_class(db, class_id)
     if not obj:
         raise HTTPException(status_code=404, detail="Turma não encontrada")
-    return await update_class(db, obj, body)
+    old_weekday, old_start = obj.schedule_weekday, obj.schedule_start
+    updated = await update_class(db, obj, body)
+    # Horário mudou: aulas futuras vazias do horário antigo deixam de valer
+    if old_weekday is not None and old_start is not None and (
+        updated.schedule_weekday != old_weekday or updated.schedule_start != old_start
+    ):
+        await drop_future_empty_lessons(db, updated, old_weekday, old_start)
+        updated = await get_class(db, class_id)
+    return updated
+
+
+@router.post("/{class_id}/generate-lessons", response_model=GenerateLessonsResult)
+async def generate(
+    class_id: uuid.UUID,
+    body: GenerateLessonsRequest = GenerateLessonsRequest(),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    obj = await get_class(db, class_id)
+    if not obj:
+        raise HTTPException(status_code=404, detail="Turma não encontrada")
+    await check_class_access(db, class_id, current_user)
+    if obj.schedule_weekday is None or obj.schedule_start is None:
+        raise HTTPException(status_code=400, detail="Defina o dia e o horário da turma antes de gerar as aulas")
+    return await generate_lessons(db, obj, body.until)
 
 
 @router.get("/{class_id}/students")

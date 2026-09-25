@@ -19,6 +19,8 @@ class Attendance(Base):
     status: Mapped[str | None] = mapped_column(String, default="present")
     check_in_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     notes: Mapped[str | None] = mapped_column(Text)
+    # Dever de casa da aula anterior: done | not_done | na (não se aplica); None = não verificado
+    homework_status: Mapped[str | None] = mapped_column(String(10), nullable=True)
 
     lesson: Mapped["Lesson"] = relationship("Lesson", foreign_keys=[lesson_id], lazy="selectin")  # type: ignore[name-defined]
     student: Mapped["Student"] = relationship("Student", foreign_keys=[student_id], lazy="selectin")  # type: ignore[name-defined]

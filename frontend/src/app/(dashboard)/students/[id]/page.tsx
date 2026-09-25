@@ -2,7 +2,14 @@
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { studentsApi } from "@/lib/api"
+import { studentsApi, alertsApi } from "@/lib/api"
+import { useAlerts, ALERTS_CHANGED } from "@/hooks/use-alerts"
+import { AlertList, ALERT_META } from "@/components/shared/AlertList"
+import { WhatsAppButton } from "@/components/shared/WhatsAppButton"
+import { firstName } from "@/lib/whatsapp"
+import { gradeLevel, GRADE_TEXT } from "@/lib/grades"
+import { highlightBadgeClass, HIGHLIGHT_LABEL } from "@/lib/highlights"
+import type { Followup } from "@/types"
 import { useAuth } from "@/hooks/use-auth"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -22,7 +29,10 @@ import {
   BookMarked,
   TrendingUp,
   Trash2,
+  AlertTriangle,
 } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { attendanceLevel, absenceLevel, formatRate, ATTENDANCE_TEXT, ATTENDANCE_LEVEL_LABEL } from "@/lib/attendance"
 
 interface StudentBasic {
   id: string; full_name: string | null; email: string | null; phone: string | null
@@ -34,7 +44,7 @@ interface EnrollmentItem {
   class_: { id: string; name: string | null; level: string | null; status: string | null } | null
 }
 interface AttendanceItem {
-  id: string; status: string | null; notes: string | null
+  id: string; status: string | null; notes: string | null; homework_status: string | null
   lesson: { id: string; scheduled_at: string | null; class_name: string | null } | null
 }
 interface AttendanceSummary {
@@ -107,6 +117,16 @@ export default function StudentHistoryPage() {
   const [history, setHistory] = useState<History | null>(null)
   const [loading, setLoading] = useState(true)
 
+  const { alerts } = useAlerts({ student_id: id })
+  const [followups, setFollowups] = useState<Followup[]>([])
+
+  useEffect(() => {
+    const loadFollowups = () => alertsApi.followups(id).then(r => setFollowups(r.data)).catch(() => {})
+    loadFollowups()
+    window.addEventListener(ALERTS_CHANGED, loadFollowups)
+    return () => window.removeEventListener(ALERTS_CHANGED, loadFollowups)
+  }, [id])
+
   useEffect(() => {
     studentsApi.getHistory(id)
       .then(r => setHistory(r.data))
@@ -129,6 +149,9 @@ export default function StudentHistoryPage() {
     ? (grades.reduce((s, g) => s + (g.score ?? 0), 0) / grades.length).toFixed(1)
     : null
 
+  const attLevel = attendanceLevel(attendance.rate, attendance.total)
+  const attRateLabel = attLevel === "none" ? "—" : formatRate(attendance.rate)
+
   const activeLoans = loans.filter(l => loanStatus(l) !== "returned").length
 
   return (
@@ -147,15 +170,23 @@ export default function StudentHistoryPage() {
           </div>
           <p className="text-sm text-muted-foreground mt-0.5">
             {student.unit_name ?? "Sem unidade"} · Cadastrado em {fmt(student.created_at)}
+            {student.phone && <> · {student.phone}</>}
           </p>
         </div>
+        <WhatsAppButton phone={student.phone} message={`Olá, ${firstName(student.full_name)}! Aqui é do Inglês Para Nossa Gente.`} />
       </div>
+
+      {alerts.length > 0 && (
+        <section aria-label="Pendências do aluno">
+          <AlertList alerts={alerts} hideStudent emptyText={null} />
+        </section>
+      )}
 
       {/* Cards de resumo */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
-        <Card className="col-span-1">
+        <Card className={cn("col-span-1", attLevel === "critical" && "border-red-500 bg-red-50 dark:bg-red-950/30")}>
           <CardContent className="pt-4 pb-4">
-            <StatBadge value={`${attendance.rate}%`} label="Frequência" color={attendance.rate >= 75 ? "text-green-600" : "text-red-600"} />
+            <StatBadge value={attRateLabel} label={attLevel === "ok" ? "Frequência" : `Frequência · ${ATTENDANCE_LEVEL_LABEL[attLevel]}`} color={ATTENDANCE_TEXT[attLevel]} />
           </CardContent>
         </Card>
         <Card>
@@ -165,12 +196,20 @@ export default function StudentHistoryPage() {
         </Card>
         <Card>
           <CardContent className="pt-4 pb-4">
-            <StatBadge value={attendance.absent} label="Faltas" color={attendance.absent > 0 ? "text-red-600" : "text-foreground"} />
+            <StatBadge
+              value={attendance.absent}
+              label={attendance.total ? `Faltas · ${Math.round(attendance.absent / attendance.total * 100)}% das aulas` : "Faltas"}
+              color={ATTENDANCE_TEXT[absenceLevel(attendance.absent, attendance.total)]}
+            />
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4 pb-4">
-            <StatBadge value={avgGrade ?? "—"} label="Média geral" color="text-blue-600" />
+            <StatBadge
+              value={avgGrade ?? "—"}
+              label="Média geral"
+              color={GRADE_TEXT[gradeLevel(avgGrade)]}
+            />
           </CardContent>
         </Card>
         <Card>
@@ -265,6 +304,7 @@ export default function StudentHistoryPage() {
           <TabsTrigger value="activities">Atividades ({activities.length})</TabsTrigger>
           <TabsTrigger value="highlights">Destaques ({highlights.length})</TabsTrigger>
           <TabsTrigger value="loans">Biblioteca ({loans.length})</TabsTrigger>
+          <TabsTrigger value="followups">Acompanhamento ({followups.length})</TabsTrigger>
         </TabsList>
 
         {/* Presença */}
@@ -288,9 +328,9 @@ export default function StudentHistoryPage() {
                   <FileText className="size-4 text-blue-500" />
                   <span>{attendance.justified} justificados</span>
                 </div>
-                <div className="ml-auto flex items-center gap-1.5 text-sm font-medium">
-                  <TrendingUp className="size-4" />
-                  {attendance.rate}% de frequência
+                <div className={cn("ml-auto flex items-center gap-1.5 text-sm font-medium", ATTENDANCE_TEXT[attLevel])}>
+                  {attLevel === "critical" ? <AlertTriangle className="size-4" /> : <TrendingUp className="size-4" />}
+                  {attRateLabel} de frequência
                 </div>
               </div>
               {/* Barra de progresso */}
@@ -310,6 +350,7 @@ export default function StudentHistoryPage() {
                     <TableHead>Data</TableHead>
                     <TableHead>Turma</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Dever</TableHead>
                     <TableHead>Observação</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -324,11 +365,17 @@ export default function StudentHistoryPage() {
                           <span className="text-xs">{ATT_LABEL[a.status ?? ""] ?? a.status ?? "—"}</span>
                         </div>
                       </TableCell>
+                      <TableCell className="text-xs">
+                        {a.homework_status === "done" && <span className="text-green-600 dark:text-green-400">Fez</span>}
+                        {a.homework_status === "not_done" && <span className="font-medium text-red-600 dark:text-red-400">Não fez</span>}
+                        {a.homework_status === "na" && <span className="text-muted-foreground">N/A</span>}
+                        {!a.homework_status && <span className="text-muted-foreground">—</span>}
+                      </TableCell>
                       <TableCell className="text-xs text-muted-foreground">{a.notes ?? "—"}</TableCell>
                     </TableRow>
                   ))}
                   {attendance.records.length === 0 && (
-                    <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Nenhuma aula registrada</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhuma aula registrada</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>
@@ -440,7 +487,7 @@ export default function StudentHistoryPage() {
                       <CardTitle className="text-sm">{h.title ?? "Destaque"}</CardTitle>
                     </div>
                     {h.highlight_type && (
-                      <Badge variant="outline" className="text-xs shrink-0">{h.highlight_type}</Badge>
+                      <Badge className={`text-xs shrink-0 ${highlightBadgeClass(h.highlight_type)}`}>{HIGHLIGHT_LABEL[h.highlight_type] ?? h.highlight_type}</Badge>
                     )}
                   </div>
                 </CardHeader>
@@ -500,6 +547,40 @@ export default function StudentHistoryPage() {
                   })}
                   {loans.length === 0 && (
                     <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhum empréstimo registrado</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Acompanhamento: ações registradas sobre pendências */}
+        <TabsContent value="followups">
+          <Card>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-28">Data</TableHead>
+                    <TableHead>Pendência</TableHead>
+                    <TableHead>O que foi feito</TableHead>
+                    <TableHead className="w-40">Por</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {followups.map(f => (
+                    <TableRow key={f.id}>
+                      <TableCell>{fmt(f.created_at)}</TableCell>
+                      <TableCell>
+                        {ALERT_META[f.alert_type]?.label ?? f.alert_type}
+                        {f.resolution === "snoozed" && <Badge variant="outline" className="ml-2 text-xs">Adiado até {fmt(f.snooze_until)}</Badge>}
+                      </TableCell>
+                      <TableCell className="text-sm">{f.note ?? <span className="text-muted-foreground">—</span>}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{f.created_by_name ?? "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                  {followups.length === 0 && (
+                    <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Nenhuma ação registrada</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>

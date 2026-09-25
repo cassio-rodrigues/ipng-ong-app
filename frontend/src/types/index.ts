@@ -59,7 +59,11 @@ export interface Class_ {
   status: string | null
   start_date: string | null
   end_date: string | null
+  schedule_weekday: number | null  // 0 = segunda … 6 = domingo
+  schedule_start: string | null    // "HH:MM:SS", horário local
+  schedule_end: string | null
   assignments: ClassAssignment[]
+  student_count?: number | null  // só vem na listagem
 }
 
 export interface ClassAssignment {
@@ -73,6 +77,7 @@ export interface ClassStudentSummary {
   student_id: string
   full_name: string | null
   attendance_rate: number
+  attendance_total: number
   grade_average: number | null
 }
 
@@ -80,6 +85,7 @@ export interface ClassSummary {
   class_id: string
   student_count: number
   attendance_rate: number
+  attendance_total: number
   grade_average: number | null
   students: ClassStudentSummary[]
 }
@@ -150,6 +156,7 @@ export interface Attendance {
   status: string | null
   check_in_time: string | null
   notes: string | null
+  homework_status: HomeworkStatus | null  // null = não verificado
 }
 
 export interface Assessment {
@@ -244,4 +251,79 @@ export interface TokenResponse {
 
 export interface ApiError {
   detail: string
+}
+
+export type AlertType = "attendance_risk" | "negative_highlight" | "homework_check" | "overdue_loan" | "lesson_on_holiday" | "low_grade"
+  | "positive_highlight" | "class_without_teacher" | "lesson_missing_attendance" | "teacher_inactive"
+
+export interface Alert {
+  key: string
+  type: AlertType
+  severity: "high" | "medium" | "low"
+  ref_id: string
+  student_id: string | null
+  student_name: string | null
+  student_phone: string | null
+  teacher_name: string | null
+  teacher_phone: string | null
+  class_id: string | null
+  class_name: string | null
+  lesson_id: string | null
+  title: string
+  detail: string
+  occurred_at: string | null
+  last_followup: { resolution: string; note: string | null; created_by_name: string | null; created_at: string } | null
+}
+
+export interface Followup {
+  id: string
+  alert_type: AlertType
+  ref_id: string
+  student_id: string | null
+  resolution: "resolved" | "snoozed"
+  note: string | null
+  snooze_until: string | null
+  created_by_name: string | null
+  created_at: string
+}
+
+export interface UpcomingLesson {
+  id: string
+  class_id: string
+  class_name: string | null
+  unit_id: string | null
+  scheduled_at: string
+  status: string | null
+  attendance_count: number
+  has_report: boolean
+}
+
+// Dever de casa na chamada: fez / não fez / não se aplica
+export type HomeworkStatus = "done" | "not_done" | "na"
+
+export interface AnalysisStudent {
+  id: string
+  full_name: string | null
+  gender: string | null
+  birth_date: string | null
+  age: number | null
+  education_level: string | null
+  unit_id: string | null
+  unit_name: string | null
+  status: string | null
+  created_at: string | null
+  classes: { id: string; name: string | null; level: string | null; book: string | null }[]
+  attendance_rate: number | null
+}
+
+export interface PeriodStats {
+  period: "30d" | "semester" | "year"
+  start: string
+  end: string
+  previous_start: string
+  previous_end: string
+  new_students: { current: number; previous: number }
+  lessons_given: { current: number; previous: number }
+  attendance_rate: { current: number; previous: number }
+  absences: { current: number; previous: number }
 }

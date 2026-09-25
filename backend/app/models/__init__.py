@@ -10,6 +10,7 @@ from app.models.assessment import Assessment, StudentGrade
 from app.models.activity import Activity, StudentActivity, StudentHighlight
 from app.models.audit import AuditLog
 from app.models.book_loan import BookLoan
+from app.models.followup import StudentFollowup
 
 __all__ = [
     "User",
@@ -33,4 +34,5 @@ __all__ = [
     "StudentHighlight",
     "AuditLog",
     "BookLoan",
+    "StudentFollowup",
 ]

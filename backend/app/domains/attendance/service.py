@@ -25,6 +25,7 @@ async def bulk_register(db: AsyncSession, lesson_id: uuid.UUID, data: Attendance
             att.status = rec.status
             att.check_in_time = rec.check_in_time
             att.notes = rec.notes
+            att.homework_status = rec.homework_status
         else:
             att = Attendance(
                 lesson_id=lesson_id,
@@ -32,6 +33,7 @@ async def bulk_register(db: AsyncSession, lesson_id: uuid.UUID, data: Attendance
                 status=rec.status,
                 check_in_time=rec.check_in_time,
                 notes=rec.notes,
+                homework_status=rec.homework_status,
             )
             db.add(att)
         records.append(att)
