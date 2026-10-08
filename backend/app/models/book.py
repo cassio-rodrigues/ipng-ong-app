@@ -19,6 +19,8 @@ class Book(Base):
     description: Mapped[str | None] = mapped_column(Text)
     isbn: Mapped[str | None] = mapped_column(String)
     active: Mapped[bool | None] = mapped_column(Boolean, default=True)
+    # Exemplares físicos na biblioteca; None = estoque não controlado
+    copies: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     chapters: Mapped[list[BookChapter]] = relationship("BookChapter", back_populates="book", cascade="all, delete-orphan", order_by="BookChapter.order_index", lazy="selectin")
 

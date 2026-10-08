@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.audit import current_user_id
 from app.core.database import get_db
 from app.core.security import decode_token
 
@@ -39,6 +40,8 @@ async def get_current_user(
     if not user or user.status != "active":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuário inativo ou não encontrado")
 
+    # Autor das alterações gravadas na auditoria durante esta requisição
+    current_user_id.set(user.id)
     return user
 
 

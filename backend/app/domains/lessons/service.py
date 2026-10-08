@@ -127,3 +127,25 @@ async def list_upcoming(db: AsyncSession, user, days: int = 7) -> list[UpcomingL
         )
         for r in rows
     ]
+
+
+async def attendance_counts(db: AsyncSession, lesson_ids: list[uuid.UUID]) -> dict[uuid.UUID, dict[str, int]]:
+    """Total, presentes (inclui atrasados) e faltas da chamada de cada aula."""
+    from app.models.attendance import Attendance
+
+    if not lesson_ids:
+        return {}
+    rows = await db.execute(
+        select(Attendance.lesson_id, Attendance.status, func.count())
+        .where(Attendance.lesson_id.in_(lesson_ids))
+        .group_by(Attendance.lesson_id, Attendance.status)
+    )
+    out: dict[uuid.UUID, dict[str, int]] = {}
+    for lesson_id, status, n in rows.all():
+        c = out.setdefault(lesson_id, {"attendance_total": 0, "present_count": 0, "absent_count": 0})
+        c["attendance_total"] += n
+        if status in ("present", "late"):
+            c["present_count"] += n
+        elif status == "absent":
+            c["absent_count"] += n
+    return out

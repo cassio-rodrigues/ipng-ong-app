@@ -22,6 +22,32 @@ import { AlertList } from "@/components/shared/AlertList"
 
 const STATUS_LABEL: Record<string, string> = { present: "Presente", absent: "Ausente", late: "Atrasado", justified: "Justificado" }
 const ATTENDANCE_OPTS = ["present", "absent", "late", "justified"]
+// Cor do botão de status quando selecionado
+const STATUS_ACTIVE: Record<string, string> = {
+  present: "bg-green-600 text-white",
+  absent: "bg-red-600 text-white",
+  late: "bg-yellow-500 text-white",
+  justified: "bg-blue-600 text-white",
+}
+const STATUS_SHORT: Record<string, string> = { present: "P", absent: "F", late: "A", justified: "J" }
+
+const MATERIAL_TYPES = [
+  { value: "link", label: "Link", hint: "https://… (site, Google Drive, Wordwall…)" },
+  { value: "pdf", label: "PDF", hint: "Link para o PDF (ex.: Google Drive)" },
+  { value: "image", label: "Imagem", hint: "Link para a imagem" },
+  { value: "video", label: "Vídeo", hint: "Link do YouTube, Drive…" },
+  { value: "text", label: "Texto", hint: "Escreva o conteúdo aqui" },
+]
+// "file" era o tipo genérico antigo; continua sendo exibido
+const MATERIAL_LABEL: Record<string, string> = { file: "Arquivo", ...Object.fromEntries(MATERIAL_TYPES.map(t => [t.value, t.label])) }
+
+// Registro mais recente da chamada (quem e quando), vindo da auditoria
+function latestRecord(rows: Attendance[]): { by: string; at: string } | null {
+  const last = rows
+    .filter(a => a.recorded_by_name && a.recorded_at)
+    .sort((a, b) => b.recorded_at!.localeCompare(a.recorded_at!))[0]
+  return last ? { by: last.recorded_by_name!, at: last.recorded_at! } : null
+}
 
 interface AttendanceRow { student_id: string; student_name: string; status: string; notes: string; homework_status: HomeworkStatus | null }
 interface PrevHomework { lesson_id: string; scheduled_at: string | null; homework: string }
@@ -42,6 +68,7 @@ export default function LessonDetailPage() {
   const [prevHomework, setPrevHomework] = useState<PrevHomework | null>(null)
   const [students, setStudents] = useState<Student[]>([])
   const [attendance, setAttendance] = useState<AttendanceRow[]>([])
+  const [lastRecorded, setLastRecorded] = useState<{ by: string; at: string } | null>(null)
   const [materials, setMaterials] = useState<LessonMaterial[]>([])
   const [report, setReport] = useState<LessonReport | null>(null)
   const [loading, setLoading] = useState(true)
@@ -84,6 +111,7 @@ export default function LessonDetailPage() {
               .catch(() => {})
           }
           const attMap = Object.fromEntries(attRes.data.map((a: Attendance) => [a.student_id, a]))
+          setLastRecorded(latestRecord(attRes.data))
           setStudents(stuRes.data)
           setAttendance(stuRes.data.map((s: Student) => ({
             student_id: s.id,
@@ -101,10 +129,11 @@ export default function LessonDetailPage() {
   async function saveAttendance(rows: AttendanceRow[] = attendance) {
     setSaving(true)
     try {
-      await lessonsApi.registerAttendance(id, rows.map(r => ({
+      const { data } = await lessonsApi.registerAttendance(id, rows.map(r => ({
         student_id: r.student_id, status: r.status, notes: r.notes || undefined,
         homework_status: prevHomework ? r.homework_status : undefined,
       })))
+      setLastRecorded(latestRecord(data))
       const absent = rows.filter(r => r.status === "absent").length
       const hwChecked = prevHomework ? rows.filter(r => r.homework_status !== null).length : 0
       toast.success(`Presença salva · ${rows.length - absent} presentes, ${absent} ${absent === 1 ? "falta" : "faltas"}${hwChecked ? ` · dever checado de ${hwChecked}` : ""}`)
@@ -282,10 +311,18 @@ export default function LessonDetailPage() {
                     )}
                     <TableCell className="font-medium">{r.student_name}</TableCell>
                     <TableCell>
-                      <Select value={r.status} onValueChange={v => canManage && updateRow(i, "status", v)} disabled={!canManage}>
-                        <SelectTrigger className="h-7 w-36 text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent>{ATTENDANCE_OPTS.map(s => <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>)}</SelectContent>
-                      </Select>
+                      <div className="inline-flex rounded-md border overflow-hidden text-xs font-medium" role="radiogroup" aria-label={`Presença de ${r.student_name}`}>
+                        {ATTENDANCE_OPTS.map((s, k) => (
+                          <button
+                            key={s} type="button" role="radio" disabled={!canManage}
+                            aria-checked={r.status === s} title={STATUS_LABEL[s]}
+                            onClick={() => updateRow(i, "status", s)}
+                            className={cn("px-2.5 py-1.5 min-h-9", k > 0 && "border-l", r.status === s ? STATUS_ACTIVE[s] : "hover:bg-muted")}
+                          >
+                            <span className="sm:hidden">{STATUS_SHORT[s]}</span><span className="hidden sm:inline">{STATUS_LABEL[s]}</span>
+                          </button>
+                        ))}
+                      </div>
                     </TableCell>
                     {prevHomework && (
                       <TableCell>
@@ -320,19 +357,30 @@ export default function LessonDetailPage() {
               </TableBody>
             </Table>
           </div>
-          {attendance.length > 0 && canManage && (
-            <Button onClick={() => saveAttendance()} disabled={saving}>
-              <Save className="size-4 mr-2" />{saving ? "Salvando…" : "Salvar presença"}
-            </Button>
-          )}
+          <div className="flex flex-wrap items-center gap-3">
+            {attendance.length > 0 && canManage && (
+              <Button onClick={() => saveAttendance()} disabled={saving}>
+                <Save className="size-4 mr-2" />{saving ? "Salvando…" : "Salvar presença"}
+              </Button>
+            )}
+            {lastRecorded && (
+              <span className="text-xs text-muted-foreground">
+                Última alteração por <strong className="font-medium text-foreground">{lastRecorded.by}</strong> em {new Date(lastRecorded.at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
+              </span>
+            )}
+          </div>
         </TabsContent>
 
         <TabsContent value="report">
           <form onSubmit={saveReport} className="space-y-4 max-w-2xl">
-            <div className="space-y-1.5"><Label>Resumo da aula</Label><Input value={reportForm.summary} onChange={e => setReportForm(f => ({ ...f, summary: e.target.value }))} placeholder="O que foi feito…" disabled={!canManage} /></div>
-            <div className="space-y-1.5"><Label>Atividades realizadas</Label><Input value={reportForm.activities_done} onChange={e => setReportForm(f => ({ ...f, activities_done: e.target.value }))} disabled={!canManage} /></div>
-            <div className="space-y-1.5"><Label>Dever de casa</Label><Input value={reportForm.homework} onChange={e => setReportForm(f => ({ ...f, homework: e.target.value }))} disabled={!canManage} /></div>
-            <div className="space-y-1.5"><Label>Observações</Label><Input value={reportForm.observations} onChange={e => setReportForm(f => ({ ...f, observations: e.target.value }))} disabled={!canManage} /></div>
+            <div className="space-y-1.5"><Label>Resumo da aula</Label><Input value={reportForm.summary} onChange={e => setReportForm(f => ({ ...f, summary: e.target.value }))} placeholder="Tema e conteúdo trabalhados. Ex.: Unit 3 — Simple past, verbos regulares" disabled={!canManage} /></div>
+            <div className="space-y-1.5"><Label>Atividades realizadas</Label><Input value={reportForm.activities_done} onChange={e => setReportForm(f => ({ ...f, activities_done: e.target.value }))} placeholder="Dinâmicas e exercícios feitos em sala. Ex.: role-play no restaurante, listening p. 32" disabled={!canManage} /></div>
+            <div className="space-y-1.5">
+              <Label>Dever de casa</Label>
+              <Input value={reportForm.homework} onChange={e => setReportForm(f => ({ ...f, homework: e.target.value }))} placeholder="O que os alunos devem trazer pronto. Ex.: Workbook p. 20, ex. 1 a 4" disabled={!canManage} />
+              <p className="text-[11px] text-muted-foreground">Na próxima aula, o sistema pede para checar quem fez.</p>
+            </div>
+            <div className="space-y-1.5"><Label>Observações</Label><Input value={reportForm.observations} onChange={e => setReportForm(f => ({ ...f, observations: e.target.value }))} placeholder="Algo que a coordenação precisa saber. Ex.: turma agitada, faltou material, aluno com dificuldade" disabled={!canManage} /></div>
             {canManage && <Button type="submit" disabled={saving}><Save className="size-4 mr-2" />{saving ? "Salvando…" : report ? "Atualizar relatório" : "Salvar relatório"}</Button>}
           </form>
         </TabsContent>
@@ -344,14 +392,12 @@ export default function LessonDetailPage() {
               <Select value={materialForm.type} onValueChange={v => setMaterialForm(f => ({ ...f, type: v }))}>
                 <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="link">Link</SelectItem>
-                  <SelectItem value="file">Arquivo</SelectItem>
-                  <SelectItem value="text">Texto</SelectItem>
+                  {MATERIAL_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5 flex-1"><Label>Título</Label><Input value={materialForm.title} onChange={e => setMaterialForm(f => ({ ...f, title: e.target.value }))} required /></div>
-            <div className="space-y-1.5 flex-1"><Label>Conteúdo / URL</Label><Input value={materialForm.content} onChange={e => setMaterialForm(f => ({ ...f, content: e.target.value }))} /></div>
+            <div className="space-y-1.5 flex-1"><Label>{materialForm.type === "text" ? "Conteúdo" : "Link"}</Label><Input value={materialForm.content} onChange={e => setMaterialForm(f => ({ ...f, content: e.target.value }))} placeholder={MATERIAL_TYPES.find(t => t.value === materialForm.type)?.hint} /></div>
             <Button type="submit" disabled={saving}>Adicionar</Button>
           </form>}
           <div className="rounded-md border bg-card overflow-x-auto">
@@ -360,9 +406,13 @@ export default function LessonDetailPage() {
               <TableBody>
                 {materials.map(m => (
                   <TableRow key={m.id}>
-                    <TableCell><Badge variant="outline">{m.type ?? "—"}</Badge></TableCell>
+                    <TableCell><Badge variant="outline">{m.type ? MATERIAL_LABEL[m.type] ?? m.type : "—"}</Badge></TableCell>
                     <TableCell className="font-medium">{m.title ?? "—"}</TableCell>
-                    <TableCell className="max-w-sm truncate text-xs text-muted-foreground">{m.content ?? "—"}</TableCell>
+                    <TableCell className="max-w-sm truncate text-xs text-muted-foreground">
+                      {m.content && /^https?:\/\//.test(m.content)
+                        ? <a href={m.content} target="_blank" rel="noopener noreferrer" className="text-primary underline-offset-2 hover:underline">{m.content}</a>
+                        : m.content ?? "—"}
+                    </TableCell>
                   </TableRow>
                 ))}
                 {materials.length === 0 && <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-6">Nenhum material adicionado</TableCell></TableRow>}

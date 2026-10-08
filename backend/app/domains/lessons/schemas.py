@@ -57,6 +57,13 @@ class LessonResponse(LessonBase):
     materials: list[LessonMaterialResponse] = []
 
 
+class LessonListItem(LessonResponse):
+    # Resumo da chamada: presentes inclui atrasados (mesma regra da frequência)
+    attendance_total: int = 0
+    present_count: int = 0
+    absent_count: int = 0
+
+
 class UpcomingLesson(BaseModel):
     id: uuid.UUID
     class_id: uuid.UUID

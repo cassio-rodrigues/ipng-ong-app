@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Pencil, Plus, Trash2, Download, Upload, FileSpreadsheet } from "lucide-react"
+import { Pencil, Plus, Trash2, Download, Upload, FileSpreadsheet, Flag } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { exportToExcel, downloadTemplate, parseExcel, fmtDateTime } from "@/lib/excel"
 import { toast } from "sonner"
@@ -40,6 +40,9 @@ export default function CalendarPage() {
   const [editEvent, setEditEvent] = useState<CalendarEvent | null>(null)
   const [form, setForm] = useState(getEmpty())
   const [saving, setSaving] = useState(false)
+  const [holidayOpen, setHolidayOpen] = useState(false)
+  const [holidayYear, setHolidayYear] = useState(() => new Date().getFullYear())
+  const [holidaySp, setHolidaySp] = useState(true)
 
   async function load() {
     try {
@@ -67,6 +70,15 @@ export default function CalendarPage() {
     e.preventDefault(); if (!editEvent) return; setSaving(true)
     try { await calendarApi.update(editEvent.id, toPayload()); setEditEvent(null); await load() }
     finally { setSaving(false) }
+  }
+
+  async function handleImportHolidays(e: React.FormEvent) {
+    e.preventDefault(); setSaving(true)
+    try {
+      const { data } = await calendarApi.importHolidays({ year: holidayYear, include_sp: holidaySp })
+      toast.success(`${data.created} feriado(s) cadastrado(s)${data.skipped ? `, ${data.skipped} já existiam` : ""}`)
+      setHolidayOpen(false); await load()
+    } finally { setSaving(false) }
   }
 
   async function handleDelete(ev: CalendarEvent) {
@@ -163,13 +175,17 @@ export default function CalendarPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Calendário Institucional</h1>
+        <div>
+          <h1 className="text-2xl font-bold">Feriados e Eventos</h1>
+          <p className="text-sm text-muted-foreground mt-1">Cadastro de feriados, eventos institucionais e de turma. Para ver tudo junto com as aulas, use o calendário completo do Início.</p>
+        </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleExport}><Download className="size-4 mr-2" />Exportar</Button>
           {canEdit && <>
             <Button variant="outline" size="sm" onClick={() => downloadTemplate(CALENDAR_HEADERS, "calendario")}><FileSpreadsheet className="size-4 mr-2" />Modelo</Button>
             <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}><Upload className="size-4 mr-2" />Importar</Button>
             <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImport} />
+            <Button variant="outline" size="sm" onClick={() => setHolidayOpen(true)}><Flag className="size-4 mr-2" />Feriados nacionais</Button>
           </>}
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             {canEdit && <DialogTrigger asChild><Button size="sm"><Plus className="size-4 mr-2" />Novo evento</Button></DialogTrigger>}
@@ -185,6 +201,30 @@ export default function CalendarPage() {
           </Dialog>
         </div>
       </div>
+
+      <Dialog open={holidayOpen} onOpenChange={setHolidayOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Cadastrar feriados nacionais</DialogTitle></DialogHeader>
+          <form onSubmit={handleImportHolidays} className="space-y-4 mt-2">
+            <p className="text-sm text-muted-foreground">
+              Inclui os feriados nacionais, Sexta-feira Santa e os pontos facultativos de Carnaval e Corpus Christi, válidos para todas as unidades.
+              Datas que já têm feriado geral cadastrado são puladas. Feriados municipais continuam sendo cadastrados à mão, por unidade.
+            </p>
+            <div className="space-y-1.5">
+              <Label>Ano</Label>
+              <Input type="number" className="w-32" min={2000} max={2100} value={holidayYear} onChange={e => setHolidayYear(Number(e.target.value))} required />
+            </div>
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input type="checkbox" className="h-4 w-4" checked={holidaySp} onChange={e => setHolidaySp(e.target.checked)} />
+              Incluir feriado estadual de São Paulo (9 de julho)
+            </label>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={() => setHolidayOpen(false)}>Cancelar</Button>
+              <Button type="submit" disabled={saving}>{saving ? "Cadastrando…" : "Cadastrar"}</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!editEvent} onOpenChange={o => !o && setEditEvent(null)}>
         <DialogContent className="max-w-lg">

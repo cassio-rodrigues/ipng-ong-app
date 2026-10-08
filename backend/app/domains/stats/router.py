@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date as date_type, datetime, timedelta
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import func, select, case
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -58,7 +58,8 @@ async def dashboard_stats(
     # Teachers
     teacher_rows = (await db.execute(
         select(User.status, func.count().label("n"))
-        .where(User.role == "teacher")
+        # Volunteacher: perfil Professor ou "Professor" nos perfis adicionais
+        .where(or_(User.role == "teacher", User.atribuicoes.any("teacher")))
         .group_by(User.status)
     )).all()
 

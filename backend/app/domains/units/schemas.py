@@ -25,3 +25,8 @@ class UnitResponse(UnitBase):
     id: uuid.UUID
     status: str | None = None
     created_at: datetime | None = None
+
+
+class UnitListItem(UnitResponse):
+    active_classes_count: int = 0
+    active_students_count: int = 0

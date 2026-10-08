@@ -1,12 +1,12 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Fragment, useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { studentsApi, alertsApi } from "@/lib/api"
 import { useAlerts, ALERTS_CHANGED } from "@/hooks/use-alerts"
 import { AlertList, ALERT_META } from "@/components/shared/AlertList"
-import { WhatsAppButton } from "@/components/shared/WhatsAppButton"
-import { firstName } from "@/lib/whatsapp"
+import { WhatsAppSendDialog } from "@/components/shared/WhatsAppSendDialog"
+import { whatsappNumber } from "@/lib/whatsapp"
 import { gradeLevel, GRADE_TEXT } from "@/lib/grades"
 import { highlightBadgeClass, HIGHLIGHT_LABEL } from "@/lib/highlights"
 import type { Followup } from "@/types"
@@ -30,7 +30,10 @@ import {
   TrendingUp,
   Trash2,
   AlertTriangle,
+  Plus,
+  MessageCircle,
 } from "lucide-react"
+import { NewLoanDialog } from "@/components/shared/NewLoanDialog"
 import { cn } from "@/lib/utils"
 import { attendanceLevel, absenceLevel, formatRate, ATTENDANCE_TEXT, ATTENDANCE_LEVEL_LABEL } from "@/lib/attendance"
 
@@ -44,7 +47,7 @@ interface EnrollmentItem {
   class_: { id: string; name: string | null; level: string | null; status: string | null } | null
 }
 interface AttendanceItem {
-  id: string; status: string | null; notes: string | null; homework_status: string | null
+  id: string; status: string | null; notes: string | null; homework_status: string | null; recorded_by_name: string | null
   lesson: { id: string; scheduled_at: string | null; class_name: string | null } | null
 }
 interface AttendanceSummary {
@@ -53,8 +56,39 @@ interface AttendanceSummary {
 }
 interface GradeItem {
   id: string; score: number | null; feedback: string | null; created_at: string | null
-  assessment: { id: string; title: string | null; type: string | null; semester: string | null; date: string | null; max_score: number | null; class_name: string | null } | null
+  assessment: { id: string; title: string | null; type: string | null; semester: string | null; date: string | null; max_score: number | null; class_name: string | null
+    book_id: string | null; book_title: string | null; book_level: string | null } | null
 }
+
+interface GradeGroup { key: string; title: string; level: string | null; grades: GradeItem[]; average: number | null }
+
+// Nota em escala 0–10 (mesma escala das cores de gradeLevel)
+function gradeOn10(g: GradeItem): number | null {
+  if (g.score == null) return null
+  const max = g.assessment?.max_score
+  return max ? Number(g.score) / max * 10 : Number(g.score)
+}
+
+// Notas agrupadas por livro/módulo da turma, do módulo mais antigo ao mais recente
+function groupGradesByBook(grades: GradeItem[]): GradeGroup[] {
+  const groups = new Map<string, GradeGroup>()
+  for (const g of grades) {
+    const a = g.assessment
+    const key = a?.book_id ?? `class:${a?.class_name ?? ""}`
+    const title = a?.book_title ?? (a?.class_name ? `${a.class_name} (turma sem livro)` : "Sem livro")
+    if (!groups.has(key)) groups.set(key, { key, title, level: a?.book_level ?? null, grades: [], average: null })
+    groups.get(key)!.grades.push(g)
+  }
+  const when = (g: GradeItem) => g.assessment?.date ?? g.created_at ?? ""
+  return [...groups.values()]
+    .map(gr => {
+      const sorted = [...gr.grades].sort((x, y) => when(x).localeCompare(when(y)))
+      const vals = sorted.map(gradeOn10).filter((v): v is number => v !== null)
+      return { ...gr, grades: sorted, average: vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null }
+    })
+    .sort((x, y) => when(x.grades[0]).localeCompare(when(y.grades[0])))
+}
+
 interface ActivityItem {
   id: string; status: string | null; score: number | null; notes: string | null
   activity: { id: string; title: string | null; type: string | null; date: string | null; class_name: string | null } | null
@@ -116,6 +150,8 @@ export default function StudentHistoryPage() {
   const { canEdit } = useAuth()
   const [history, setHistory] = useState<History | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loanOpen, setLoanOpen] = useState(false)
+  const [waOpen, setWaOpen] = useState(false)
 
   const { alerts } = useAlerts({ student_id: id })
   const [followups, setFollowups] = useState<Followup[]>([])
@@ -132,6 +168,11 @@ export default function StudentHistoryPage() {
       .then(r => setHistory(r.data))
       .finally(() => setLoading(false))
   }, [id])
+
+  async function reloadHistory() {
+    const r = await studentsApi.getHistory(id)
+    setHistory(r.data)
+  }
 
   async function handleRemoveEnrollment(enrollmentId: string, className: string) {
     if (!confirm(`Remover matrícula de "${className}"?`)) return
@@ -173,7 +214,21 @@ export default function StudentHistoryPage() {
             {student.phone && <> · {student.phone}</>}
           </p>
         </div>
-        <WhatsAppButton phone={student.phone} message={`Olá, ${firstName(student.full_name)}! Aqui é do Inglês Para Nossa Gente.`} />
+        {whatsappNumber(student.phone) && (
+          <>
+            <Button size="sm" className="bg-[#25D366] text-white hover:bg-[#1ebe5b]" onClick={() => setWaOpen(true)}>
+              <MessageCircle className="size-4 mr-1.5" />WhatsApp
+            </Button>
+            <WhatsAppSendDialog
+              open={waOpen} onOpenChange={setWaOpen}
+              title={`WhatsApp — ${student.full_name ?? ""}`}
+              recipients={[{
+                id: student.id, name: student.full_name, phone: student.phone,
+                className: enrollments.filter(e => e.status === "active").map(e => e.class_?.name).filter(Boolean).join(", ") || null,
+              }]}
+            />
+          </>
+        )}
       </div>
 
       {alerts.length > 0 && (
@@ -352,6 +407,7 @@ export default function StudentHistoryPage() {
                     <TableHead>Status</TableHead>
                     <TableHead>Dever</TableHead>
                     <TableHead>Observação</TableHead>
+                    <TableHead>Registrado por</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -372,10 +428,11 @@ export default function StudentHistoryPage() {
                         {!a.homework_status && <span className="text-muted-foreground">—</span>}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">{a.notes ?? "—"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{a.recorded_by_name ?? "—"}</TableCell>
                     </TableRow>
                   ))}
                   {attendance.records.length === 0 && (
-                    <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhuma aula registrada</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhuma aula registrada</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>
@@ -400,7 +457,24 @@ export default function StudentHistoryPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {grades.map(g => {
+                  {groupGradesByBook(grades).map(group => (
+                    <Fragment key={group.key}>
+                      <TableRow className="bg-muted/50 hover:bg-muted/50">
+                        <TableCell colSpan={7} className="py-2">
+                          <div className="flex items-center gap-2 text-sm">
+                            <BookOpen className="size-4 text-muted-foreground" />
+                            <span className="font-semibold">{group.title}</span>
+                            {group.level && <Badge variant="outline" className="text-[10px]">{group.level}</Badge>}
+                            <span className="text-xs text-muted-foreground">· {group.grades.length} {group.grades.length === 1 ? "avaliação" : "avaliações"}</span>
+                            {group.average !== null && (
+                              <span className={cn("ml-auto text-xs font-semibold", GRADE_TEXT[gradeLevel(group.average)])}>
+                                Média {group.average.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                  {group.grades.map(g => {
                     const pct = g.assessment?.max_score && g.score != null
                       ? Math.round(Number(g.score) / g.assessment.max_score * 100)
                       : null
@@ -425,6 +499,8 @@ export default function StudentHistoryPage() {
                       </TableRow>
                     )
                   })}
+                    </Fragment>
+                  ))}
                   {grades.length === 0 && (
                     <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhuma nota registrada</TableCell></TableRow>
                   )}
@@ -509,6 +585,12 @@ export default function StudentHistoryPage() {
 
         {/* Biblioteca */}
         <TabsContent value="loans">
+          {canEdit && (
+            <div className="flex justify-end mb-3">
+              <Button size="sm" onClick={() => setLoanOpen(true)}><Plus className="size-4 mr-2" />Novo empréstimo</Button>
+              <NewLoanDialog open={loanOpen} onOpenChange={setLoanOpen} student={student} onCreated={reloadHistory} />
+            </div>
+          )}
           <Card>
             <CardContent className="p-0">
               <Table>

@@ -158,13 +158,15 @@ export default function UnitsPage() {
       {loading ? <p className="text-muted-foreground text-sm">Carregando…</p> : (
         <div className="rounded-md border bg-card overflow-x-auto">
           <Table>
-            <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Endereço</TableHead><TableHead>Coordenador</TableHead><TableHead>Status</TableHead><TableHead className="w-20" /></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Endereço</TableHead><TableHead>Coordenador</TableHead><TableHead className="text-right">Turmas ativas</TableHead><TableHead className="text-right">Alunos ativos</TableHead><TableHead>Status</TableHead><TableHead className="w-20" /></TableRow></TableHeader>
             <TableBody>
               {units.map(u => (
                 <TableRow key={u.id}>
                   <TableCell className="font-medium">{u.name ?? "—"}</TableCell>
                   <TableCell>{u.address ?? "—"}</TableCell>
                   <TableCell>{u.coordinator_id ? coordMap[u.coordinator_id] ?? "—" : "—"}</TableCell>
+                  <TableCell className="text-right tabular-nums">{u.active_classes_count ?? 0}</TableCell>
+                  <TableCell className="text-right tabular-nums">{u.active_students_count ?? 0}</TableCell>
                   <TableCell><Badge variant={u.status === "active" ? "default" : "secondary"}>{u.status === "active" ? "Ativa" : "Inativa"}</Badge></TableCell>
                   <TableCell>{canEdit && <div className="flex gap-1">
                     <Button variant="ghost" size="icon" onClick={() => openEdit(u)}><Pencil className="size-4" /></Button>
@@ -172,7 +174,7 @@ export default function UnitsPage() {
                   </div>}</TableCell>
                 </TableRow>
               ))}
-              {units.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhuma unidade cadastrada</TableCell></TableRow>}
+              {units.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhuma unidade cadastrada</TableCell></TableRow>}
             </TableBody>
           </Table>
         </div>

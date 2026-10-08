@@ -7,7 +7,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_role
-from app.domains.students.schemas import EnrollmentCreate, EnrollmentResponse, StudentCreate, StudentResponse, StudentUpdate
+from app.domains.students.schemas import (
+    EnrollmentCreate,
+    EnrollmentResponse,
+    StudentCreate,
+    StudentListItem,
+    StudentResponse,
+    StudentUpdate,
+)
 from app.domains.students.service import (
     create_student,
     delete_enrollment,
@@ -24,17 +31,24 @@ from app.domains.students.history_service import get_student_history
 router = APIRouter(prefix="/students", tags=["Students"])
 
 
-@router.get("", response_model=list[StudentResponse])
+@router.get("", response_model=list[StudentListItem])
 async def get_students(
     skip: int = 0,
     limit: int = 200,
     unit_id: uuid.UUID | None = None,
     status: str | None = None,
     teacher_id: uuid.UUID | None = None,
+    class_id: uuid.UUID | None = None,
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_user),
 ):
-    return await list_students(db, skip, limit, unit_id, status, teacher_id)
+    students = await list_students(db, skip, limit, unit_id, status, teacher_id, class_id)
+    return [
+        StudentListItem.model_validate(s).model_copy(
+            update={"class_ids": [e.class_id for e in s.enrollments if e.status == "active"]}
+        )
+        for s in students
+    ]
 
 
 @router.post("", response_model=StudentResponse, status_code=status.HTTP_201_CREATED)

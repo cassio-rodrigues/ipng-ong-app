@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.database import alphabetical
 from sqlalchemy.orm import selectinload
 
 from app.domains.books.schemas import BookChapterCreate, BookChapterUpdate, BookCreate, BookUpdate
@@ -12,7 +14,7 @@ from app.models.book import Book, BookChapter
 
 async def list_books(db: AsyncSession, skip: int = 0, limit: int = 50) -> list[Book]:
     result = await db.execute(
-        select(Book).options(selectinload(Book.chapters)).offset(skip).limit(limit)
+        select(Book).options(selectinload(Book.chapters)).order_by(alphabetical(Book.title)).offset(skip).limit(limit)
     )
     return list(result.scalars().all())
 
@@ -35,6 +37,9 @@ async def create_book(db: AsyncSession, data: BookCreate) -> Book:
 async def update_book(db: AsyncSession, book: Book, data: BookUpdate) -> Book:
     for field, value in data.model_dump(exclude_none=True).items():
         setattr(book, field, value)
+    # copies = null explícito desliga o controle de estoque
+    if "copies" in data.model_fields_set and data.copies is None:
+        book.copies = None
     await db.commit()
     await db.refresh(book)
     return book
@@ -58,3 +63,12 @@ async def update_chapter(db: AsyncSession, chapter: BookChapter, data: BookChapt
 
 async def get_chapter(db: AsyncSession, chapter_id: uuid.UUID) -> BookChapter | None:
     return await db.get(BookChapter, chapter_id)
+
+
+async def active_loans_by_book(db: AsyncSession) -> dict[uuid.UUID, int]:
+    from app.models.book_loan import BookLoan
+
+    rows = await db.execute(
+        select(BookLoan.book_id, func.count()).where(BookLoan.status == "active").group_by(BookLoan.book_id)
+    )
+    return dict(rows.all())

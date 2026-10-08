@@ -5,6 +5,8 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.database import alphabetical
+
 from app.domains.students.schemas import EnrollmentCreate, StudentCreate, StudentUpdate
 from app.models.class_ import Class_
 from app.models.student import Enrollment, Student
@@ -17,19 +19,25 @@ async def list_students(
     unit_id: uuid.UUID | None = None,
     status: str | None = None,
     teacher_id: uuid.UUID | None = None,
+    class_id: uuid.UUID | None = None,
 ) -> list[Student]:
     q = select(Student)
+    if class_id:
+        q = q.where(Student.id.in_(
+            select(Enrollment.student_id).where(Enrollment.class_id == class_id, Enrollment.status == "active")
+        ))
     if teacher_id:
-        q = (q
-             .join(Enrollment, Enrollment.student_id == Student.id)
-             .join(Class_, Class_.id == Enrollment.class_id)
-             .where(Class_.main_teacher_id == teacher_id)
-             .distinct())
+        # Subconsulta em vez de join + DISTINCT, que impediria o ORDER BY alfabético
+        q = q.where(Student.id.in_(
+            select(Enrollment.student_id)
+            .join(Class_, Class_.id == Enrollment.class_id)
+            .where(Class_.main_teacher_id == teacher_id)
+        ))
     if unit_id:
         q = q.where(Student.unit_id == unit_id)
     if status:
         q = q.where(Student.status == status)
-    result = await db.execute(q.offset(skip).limit(limit))
+    result = await db.execute(q.order_by(alphabetical(Student.full_name)).offset(skip).limit(limit))
     return list(result.scalars().all())
 
 

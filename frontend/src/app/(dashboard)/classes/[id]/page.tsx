@@ -5,14 +5,14 @@ import Link from "next/link"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { classesApi, unitsApi, usersApi, lessonsApi, assessmentsApi, calendarApi, activitiesApi, highlightsApi } from "@/lib/api"
 import { eventsOnDay, localDay, calendarWindowStart, EVENT_TYPE_LABEL } from "@/lib/calendar"
-import type { Activity, Assessment, Attendance, CalendarEvent, Class_, ClassStudentSummary, ClassSummary, Lesson, StudentHighlight, Unit, User } from "@/types"
+import type { Activity, Assessment, Attendance, CalendarEvent, Class_, ClassStudentSummary, ClassSummary, Lesson, Student, StudentHighlight, Unit, User } from "@/types"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ArrowLeft, Trash2, UserPlus, Users, UserCheck, BarChart3, AlertTriangle, ClipboardCheck, NotebookPen, PlayCircle, CalendarClock, CheckCircle2, CalendarDays, TrendingDown, Repeat, Plus } from "lucide-react"
+import { ArrowLeft, Trash2, UserPlus, Users, UserCheck, BarChart3, AlertTriangle, ClipboardCheck, NotebookPen, PlayCircle, CalendarClock, CheckCircle2, CalendarDays, TrendingDown, Repeat, Plus, MessageCircle } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -26,6 +26,8 @@ import { gradeLevel, GRADE_TEXT, GRADE_PILL } from "@/lib/grades"
 import { highlightBadgeClass, HIGHLIGHT_LABEL } from "@/lib/highlights"
 import { formatSchedule, weekdayOf, generateResultMessage, fmtHour } from "@/lib/schedule"
 import { toast } from "sonner"
+import { canTeach } from "@/lib/users"
+import { WhatsAppSendDialog, type WhatsAppRecipient } from "@/components/shared/WhatsAppSendDialog"
 
 
 const TABS = ["hoje", "alunos", "aulas", "avaliacoes", "atividades", "destaques", "professores"] as const
@@ -74,6 +76,8 @@ export default function ClassDetailPage() {
   const [activities, setActivities] = useState<Activity[]>([])
   const [highlights, setHighlights] = useState<StudentHighlight[]>([])
   const [summary, setSummary] = useState<ClassSummary | null>(null)
+  const [waOpen, setWaOpen] = useState(false)
+  const [waRecipients, setWaRecipients] = useState<WhatsAppRecipient[]>([])
   const [units, setUnits] = useState<Unit[]>([])
   const [teachers, setTeachers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
@@ -104,12 +108,13 @@ export default function ClassDetailPage() {
       if (role === "admin" || role === "coordinator") {
         // Admin/coordenação: lista completa, necessária para adicionar professores
         const { data } = await usersApi.list({ limit: 200 })
-        setTeachers((data as User[]).filter(u => u.role === "teacher" || u.role === "coordinator"))
+        setTeachers((data as User[]).filter(canTeach))
       } else {
         // Professor não pode listar usuários (GET /users é restrito); busca só os da turma
         const ids = [c.main_teacher_id, ...c.assignments.map(a => a.teacher_id)].filter((x): x is string => !!x)
         const res = await Promise.allSettled(ids.map(tid => usersApi.get(tid)))
-        setTeachers(res.flatMap(r => r.status === "fulfilled" ? [r.value.data as User] : []))
+        setTeachers(res.flatMap(r => r.status === "fulfilled" ? [r.value.data as User] : [])
+          .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? "", "pt-BR")))
       }
     } finally { setLoading(false) }
   }
@@ -127,6 +132,13 @@ export default function ClassDetailPage() {
     if (!confirm("Remover este professor da turma?")) return
     await classesApi.removeAssignment(id, assignmentId)
     await load()
+  }
+
+  // Telefones só vêm na lista completa de alunos da turma, buscada ao abrir
+  async function openWhatsApp() {
+    const { data } = await classesApi.getStudents(id)
+    setWaRecipients((data as Student[]).map(st => ({ id: st.id, name: st.full_name, phone: st.phone, className: cls?.name })))
+    setWaOpen(true)
   }
 
   if (loading) return <p className="text-muted-foreground text-sm p-6">Carregando…</p>
@@ -153,6 +165,13 @@ export default function ClassDetailPage() {
             {formatSchedule(cls) && <> · <Repeat className="inline size-3.5 -mt-0.5" /> {formatSchedule(cls)}</>}
           </p>
         </div>
+        {canManage && (summary?.student_count ?? 0) > 0 && (
+          <Button size="sm" variant="outline" className="ml-auto" onClick={openWhatsApp}>
+            <MessageCircle className="size-4 mr-2 text-[#25D366]" />Mensagem para a turma
+          </Button>
+        )}
+        <WhatsAppSendDialog open={waOpen} onOpenChange={setWaOpen} recipients={waRecipients}
+          title={`WhatsApp — turma ${cls.name ?? ""}`} />
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
@@ -597,7 +616,7 @@ type SortKey = "priority" | "name" | "attendance" | "grade"
 
 function StudentsTab({ students }: { students: ClassStudentSummary[] }) {
   const router = useRouter()
-  const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: "priority", dir: 1 })
+  const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: "name", dir: 1 })
 
   const rows = students.map(s => ({ ...s, ...studentFlags(s) }))
   const byName = (a: typeof rows[0], b: typeof rows[0]) => (a.full_name ?? "").localeCompare(b.full_name ?? "", "pt-BR")

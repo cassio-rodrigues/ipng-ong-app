@@ -5,6 +5,7 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.domains.audit.service import last_authors
 from app.models.attendance import Attendance
 from app.models.assessment import StudentGrade
 from app.models.activity import StudentActivity, StudentHighlight
@@ -66,6 +67,7 @@ async def get_student_history(db: AsyncSession, student_id: uuid.UUID) -> Studen
         .order_by(Attendance.id)
     )).scalars().all()
 
+    att_authors = await last_authors(db, "attendance", (a.id for a in att_rows))
     att_items = []
     for a in att_rows:
         lesson = a.lesson
@@ -75,6 +77,7 @@ async def get_student_history(db: AsyncSession, student_id: uuid.UUID) -> Studen
             status=a.status,
             notes=a.notes,
             homework_status=a.homework_status,
+            recorded_by_name=att_authors.get(a.id, (None, None))[0],
             lesson=LessonBrief(
                 id=lesson.id,
                 scheduled_at=lesson.scheduled_at,
@@ -119,6 +122,7 @@ async def get_student_history(db: AsyncSession, student_id: uuid.UUID) -> Studen
                 date=g.assessment.date,
                 max_score=g.assessment.max_score,
                 class_name=g.assessment.class_.name if g.assessment.class_ else None,
+                **_book_fields(g.assessment.class_),
             ) if g.assessment else None,
         )
         for g in grade_rows
@@ -197,3 +201,10 @@ async def get_student_history(db: AsyncSession, student_id: uuid.UUID) -> Studen
         highlights=highlights,
         loans=loans,
     )
+
+
+def _book_fields(cls) -> dict:
+    book = cls.book if cls else None
+    if not book:
+        return {}
+    return {"book_id": book.id, "book_title": book.title, "book_level": book.level}

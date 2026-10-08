@@ -10,7 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Combobox } from "@/components/ui/combobox"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Pencil, Plus } from "lucide-react"
+import { Download, Pencil, Plus, PartyPopper } from "lucide-react"
+import { WhatsAppSendDialog, type WhatsAppRecipient } from "@/components/shared/WhatsAppSendDialog"
+import { Input } from "@/components/ui/input"
+import { exportToExcel } from "@/lib/excel"
 import { useAuth } from "@/hooks/use-auth"
 import { highlightBadgeClass, HIGHLIGHT_LABEL } from "@/lib/highlights"
 import { cn } from "@/lib/utils"
@@ -98,6 +101,11 @@ export default function HighlightsPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [editHighlight, setEditHighlight] = useState<StudentHighlight | null>(null)
   const [filterClass, setFilterClass] = useState("all")
+  const [filterType, setFilterType] = useState("all")
+  const [startDate, setStartDate] = useState("")
+  const [endDate, setEndDate] = useState("")
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [inviteOpen, setInviteOpen] = useState(false)
   const [form, setForm] = useState({ ...EMPTY })
   const [saving, setSaving] = useState(false)
 
@@ -188,6 +196,65 @@ export default function HighlightsPage() {
   const classMap = Object.fromEntries(classes.map(c => [c.id, c.name]))
   const studentMap = Object.fromEntries(students.map(s => [s.id, s.full_name]))
   const reasonLabel = Object.fromEntries(REASONS.map(r => [r.value, r.label]))
+  const studentById = Object.fromEntries(students.map(s => [s.id, s]))
+
+  // Filtros de tipo e período no cliente; datas comparadas no dia local
+  const localDay = (iso: string) => new Date(iso).toLocaleDateString("sv-SE")
+  const visible = highlights.filter(h => {
+    if (filterType !== "all" && h.highlight_type !== filterType) return false
+    const day = h.created_at ? localDay(h.created_at) : ""
+    if (startDate && day < startDate) return false
+    if (endDate && day > endDate) return false
+    return true
+  })
+  const visibleSelected = visible.filter(h => selected.has(h.id))
+  const allSelected = visible.length > 0 && visibleSelected.length === visible.length
+
+  // Contagem por turma (positivos/negativos) dos destaques filtrados
+  const byClass = Object.values(visible.reduce<Record<string, { name: string; positive: number; negative: number; other: number }>>((acc, h) => {
+    const key = h.class_id ?? "none"
+    const row = acc[key] ??= { name: h.class_id ? classMap[h.class_id] ?? "—" : "Sem turma", positive: 0, negative: 0, other: 0 }
+    if (h.highlight_type === "positive") row.positive++
+    else if (h.highlight_type === "negative") row.negative++
+    else row.other++
+    return acc
+  }, {})).sort((a, b) => (b.positive + b.negative + b.other) - (a.positive + a.negative + a.other))
+
+  // Convite do Day Out: selecionados, ou todos os destaques positivos filtrados; um por aluno
+  const inviteSource = visibleSelected.length ? visibleSelected : visible.filter(h => h.highlight_type === "positive")
+  const inviteRecipients: WhatsAppRecipient[] = [...new Map(inviteSource.map(h => {
+    const st = studentById[h.student_id]
+    return [h.student_id, {
+      id: h.student_id, name: st?.full_name ?? null, phone: st?.phone ?? null,
+      className: h.class_id ? classMap[h.class_id] ?? null : null,
+    }] as const
+  })).values()]
+
+  function toggleOne(id: string) {
+    setSelected(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next })
+  }
+
+  function toggleAll() {
+    setSelected(allSelected ? new Set() : new Set(visible.map(h => h.id)))
+  }
+
+  // Exporta a seleção (ou tudo que está filtrado) com contato do aluno — ex.: lista de convite do Day Out
+  function handleExport() {
+    const rows = visibleSelected.length ? visibleSelected : visible
+    exportToExcel(rows.map(h => {
+      const st = studentById[h.student_id]
+      return {
+        "Aluno": st?.full_name ?? "",
+        "Turma": h.class_id ? classMap[h.class_id] ?? "" : "",
+        "WhatsApp": st?.phone ?? "",
+        "Email": st?.email ?? "",
+        "Tipo": HIGHLIGHT_LABEL[h.highlight_type ?? ""] ?? h.highlight_type ?? "",
+        "Motivo principal": h.reason_primary ? reasonLabel[h.reason_primary] ?? h.reason_primary : "",
+        "Percepção geral": h.teacher_overall_perception ?? "",
+        "Data": h.created_at ? new Date(h.created_at).toLocaleDateString("pt-BR") : "",
+      }
+    }), `destaques_${new Date().toISOString().slice(0, 10)}`)
+  }
   const selectedChannels = form.english_outside_channels.split(",").filter(Boolean)
   const studentOptions = students.map(s => ({ value: s.id, label: s.full_name ?? s.id }))
 
@@ -419,7 +486,7 @@ export default function HighlightsPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="flex gap-4 mb-4">
+      <div className="flex gap-3 mb-4 flex-wrap items-center">
         <Select value={filterClass} onValueChange={setFilterClass}>
           <SelectTrigger className="w-52"><SelectValue placeholder="Filtrar por turma" /></SelectTrigger>
           <SelectContent>
@@ -427,13 +494,54 @@ export default function HighlightsPage() {
             {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Select value={filterType} onValueChange={setFilterType}>
+          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os tipos</SelectItem>
+            <SelectItem value="positive">Positivos</SelectItem>
+            <SelectItem value="negative">Negativos</SelectItem>
+          </SelectContent>
+        </Select>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span>De</span>
+          <Input type="date" className="w-40" value={startDate} onChange={e => setStartDate(e.target.value)} />
+          <span>até</span>
+          <Input type="date" className="w-40" value={endDate} onChange={e => setEndDate(e.target.value)} />
+        </div>
+        <Button variant="outline" size="sm" className="ml-auto" onClick={() => setInviteOpen(true)} disabled={inviteRecipients.length === 0}
+          title={visibleSelected.length ? "Convidar os selecionados" : "Convidar todos os destaques positivos da lista"}>
+          <PartyPopper className="size-4 mr-2" />Convidar para o Day Out ({inviteRecipients.length})
+        </Button>
+        <WhatsAppSendDialog open={inviteOpen} onOpenChange={setInviteOpen} recipients={inviteRecipients}
+          defaultTemplate="day_out" title="Convite para o Day Out" />
+        <Button variant="outline" size="sm" onClick={handleExport} disabled={visible.length === 0}>
+          <Download className="size-4 mr-2" />
+          {visibleSelected.length ? `Exportar ${visibleSelected.length} selecionado(s)` : `Exportar ${visible.length}`}
+        </Button>
       </div>
+
+      {!loading && byClass.length > 1 && (
+        <div className="flex flex-wrap gap-2 mb-4">
+          {byClass.map(c => (
+            <div key={c.name} className="rounded-md border bg-card px-3 py-1.5 text-xs">
+              <span className="font-medium">{c.name}</span>
+              <span className="ml-2 text-green-600 dark:text-green-400">{c.positive} positivo(s)</span>
+              <span className="ml-2 text-red-600 dark:text-red-400">{c.negative} negativo(s)</span>
+              {c.other > 0 && <span className="ml-2 text-muted-foreground">{c.other} outro(s)</span>}
+            </div>
+          ))}
+        </div>
+      )}
 
       {loading ? <p className="text-muted-foreground text-sm">Carregando…</p> : (
         <div className="rounded-md border bg-card overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10">
+                  <input type="checkbox" className="h-4 w-4 rounded border-gray-300 cursor-pointer" aria-label="Selecionar todos"
+                    checked={allSelected} onChange={toggleAll} />
+                </TableHead>
                 <TableHead>Aluno</TableHead>
                 <TableHead>Turma</TableHead>
                 <TableHead>Tipo</TableHead>
@@ -444,8 +552,12 @@ export default function HighlightsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {highlights.map(h => (
-                <TableRow key={h.id}>
+              {visible.map(h => (
+                <TableRow key={h.id} className={selected.has(h.id) ? "bg-muted/50" : ""}>
+                  <TableCell>
+                    <input type="checkbox" className="h-4 w-4 rounded border-gray-300 cursor-pointer" aria-label="Selecionar"
+                      checked={selected.has(h.id)} onChange={() => toggleOne(h.id)} />
+                  </TableCell>
                   <TableCell className="font-medium">{studentMap[h.student_id] ?? "—"}</TableCell>
                   <TableCell>{h.class_id ? classMap[h.class_id] ?? "—" : "—"}</TableCell>
                   <TableCell>
@@ -463,7 +575,7 @@ export default function HighlightsPage() {
                   <TableCell>{canManage && <Button variant="ghost" size="icon" onClick={() => openEdit(h)}><Pencil className="size-4" /></Button>}</TableCell>
                 </TableRow>
               ))}
-              {highlights.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum destaque registrado</TableCell></TableRow>}
+              {visible.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum destaque registrado</TableCell></TableRow>}
             </TableBody>
           </Table>
         </div>

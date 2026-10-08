@@ -116,7 +116,7 @@ export const classesApi = {
 
 // Students
 export const studentsApi = {
-  list: (params?: { unit_id?: string; status?: string; teacher_id?: string }) =>
+  list: (params?: { unit_id?: string; status?: string; teacher_id?: string; class_id?: string }) =>
     api.get("/students", { params }),
   get: (id: string) => api.get(`/students/${id}`),
   create: (data: object) => api.post("/students", data),
@@ -173,6 +173,8 @@ export const calendarApi = {
     limit?: number
   }) => api.get("/calendar/events", { params }),
   create: (data: object) => api.post("/calendar/events", data),
+  importHolidays: (data: { year: number; include_sp?: boolean }) =>
+    api.post<{ created: number; skipped: number }>("/calendar/holidays/import", data),
   update: (id: string, data: object) =>
     api.patch(`/calendar/events/${id}`, data),
   delete: (id: string) => api.delete(`/calendar/events/${id}`),
@@ -209,7 +211,7 @@ export const loansApi = {
 
 // Audit
 export const auditApi = {
-  list: (params?: { skip?: number; limit?: number; entity_type?: string; user_id?: string }) =>
+  list: (params?: { skip?: number; limit?: number; entity_type?: string; entity_id?: string; action?: string; user_id?: string; start_date?: string; end_date?: string }) =>
     api.get("/audit/logs", { params }),
 }
 
