@@ -30,6 +30,8 @@ export default function UsersPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [users, setUsers] = useState<User[]>([])
   const [filterStatus, setFilterStatus] = useState("all")
+  const [filterRole, setFilterRole] = useState("all")
+  const [search, setSearch] = useState("")
   const [loading, setLoading] = useState(true)
   const [createOpen, setCreateOpen] = useState(false)
   const [editUser, setEditUser] = useState<User | null>(null)
@@ -38,7 +40,7 @@ export default function UsersPage() {
   const [saving, setSaving] = useState(false)
 
   async function load() {
-    const params: Record<string, unknown> = { limit: 100 }
+    const params: Record<string, unknown> = { limit: 500 }
     if (filterStatus !== "all") params.status = filterStatus
     try { const { data } = await usersApi.list(params); setUsers(data) }
     finally { setLoading(false) }
@@ -80,6 +82,9 @@ export default function UsersPage() {
   }
 
   const F = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
+  const visibleUsers = users
+    .filter(u => filterRole === "all" || u.role === filterRole)
+    .filter(u => (u.name ?? "").toLowerCase().includes(search.trim().toLowerCase()))
 
   function handleExport() {
     exportToExcel(users.map(u => ({
@@ -178,7 +183,7 @@ export default function UsersPage() {
         )}
       </div>
       <div className="space-y-1.5">
-        <Label>Atribuições</Label>
+        <Label>Perfis adicionais</Label>
         <div className="flex flex-wrap gap-2 pt-1">
           {ATRIBUICOES_OPTS.map(opt => (
             <button
@@ -195,7 +200,7 @@ export default function UsersPage() {
             </button>
           ))}
         </div>
-        <p className="text-[11px] text-muted-foreground">Selecione uma ou mais atribuições adicionais ao perfil principal.</p>
+        <p className="text-[11px] text-muted-foreground">Opcional: marque apenas se a pessoa também atua em outro perfil além do principal. Não altera permissões.</p>
       </div>
     </div>
   )
@@ -240,7 +245,22 @@ export default function UsersPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="flex gap-3 mb-4">
+      <div className="flex gap-3 mb-4 flex-wrap">
+        <Input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Buscar por nome…"
+          className="w-56"
+        />
+        <Select value={filterRole} onValueChange={setFilterRole}>
+          <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os perfis</SelectItem>
+            <SelectItem value="admin">Admin</SelectItem>
+            <SelectItem value="coordinator">Coordenador</SelectItem>
+            <SelectItem value="teacher">Professor</SelectItem>
+          </SelectContent>
+        </Select>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
           <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -255,10 +275,10 @@ export default function UsersPage() {
         <div className="rounded-md border bg-card overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow><TableHead>Nome</TableHead><TableHead>Email</TableHead><TableHead>Telefone</TableHead><TableHead>Perfil</TableHead><TableHead>Atribuições</TableHead><TableHead>Status</TableHead><TableHead className="w-20" /></TableRow>
+              <TableRow><TableHead>Nome</TableHead><TableHead>Email</TableHead><TableHead>Telefone</TableHead><TableHead>Perfil</TableHead><TableHead>Perfis adicionais</TableHead><TableHead>Status</TableHead><TableHead className="w-20" /></TableRow>
             </TableHeader>
             <TableBody>
-              {users.map(u => (
+              {visibleUsers.map(u => (
                 <TableRow key={u.id}>
                   <TableCell className="font-medium">{u.name ?? "—"}</TableCell>
                   <TableCell>{u.email ?? "—"}</TableCell>
@@ -266,8 +286,8 @@ export default function UsersPage() {
                   <TableCell>{u.role ? <Badge variant="outline">{ROLE_LABEL[u.role] ?? u.role}</Badge> : "—"}</TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
-                      {u.atribuicoes?.length
-                        ? u.atribuicoes.map(a => <Badge key={a} variant="secondary">{ROLE_LABEL[a] ?? a}</Badge>)
+                      {u.atribuicoes?.some(a => a !== u.role)
+                        ? u.atribuicoes.filter(a => a !== u.role).map(a => <Badge key={a} variant="secondary">{ROLE_LABEL[a] ?? a}</Badge>)
                         : <span className="text-muted-foreground text-xs">—</span>}
                     </div>
                   </TableCell>
@@ -278,7 +298,7 @@ export default function UsersPage() {
                   </div>}</TableCell>
                 </TableRow>
               ))}
-              {users.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum usuário encontrado</TableCell></TableRow>}
+              {visibleUsers.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum usuário encontrado</TableCell></TableRow>}
             </TableBody>
           </Table>
         </div>

@@ -8,14 +8,25 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_role
 from app.domains.books.schemas import BookChapterCreate, BookChapterResponse, BookChapterUpdate, BookCreate, BookResponse, BookUpdate
-from app.domains.books.service import add_chapter, create_book, get_book, get_chapter, list_books, update_book, update_chapter
+from app.domains.books.service import (
+    active_loans_by_book,
+    add_chapter,
+    create_book,
+    get_book,
+    get_chapter,
+    list_books,
+    update_book,
+    update_chapter,
+)
 
 router = APIRouter(prefix="/books", tags=["Books"])
 
 
 @router.get("", response_model=list[BookResponse])
 async def get_books(skip: int = 0, limit: int = 50, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
-    return await list_books(db, skip, limit)
+    books = await list_books(db, skip, limit)
+    loans = await active_loans_by_book(db)
+    return [BookResponse.model_validate(b).model_copy(update={"active_loans": loans.get(b.id, 0)}) for b in books]
 
 
 @router.post("", response_model=BookResponse, status_code=status.HTTP_201_CREATED)

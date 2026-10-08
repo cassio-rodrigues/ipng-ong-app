@@ -16,6 +16,8 @@ import { UserCheck, ExternalLink, Pencil, Plus, Trash2, Download, Upload, FileSp
 import { useAuth } from "@/hooks/use-auth"
 import { exportToExcel, downloadTemplate, parseExcel, fmtDateTime } from "@/lib/excel"
 import { toast } from "sonner"
+import { cn } from "@/lib/utils"
+import { attendanceLevel, formatRate, ATTENDANCE_TEXT } from "@/lib/attendance"
 
 const LESSON_HEADERS = ["Turma (nome)", "Data e hora (DD/MM/AAAA HH:MM)", "Status (scheduled/completed/cancelled)"]
 const STATUS_LABEL: Record<string, string> = { scheduled: "Agendada", completed: "Concluída", cancelled: "Cancelada" }
@@ -242,7 +244,7 @@ export default function LessonsPage() {
       {loading ? <p className="text-muted-foreground text-sm">Carregando…</p> : (
         <div className="rounded-md border bg-card overflow-x-auto">
           <Table>
-            <TableHeader><TableRow><TableHead>Turma</TableHead><TableHead>Data agendada</TableHead><TableHead>Status</TableHead><TableHead>Relatório</TableHead><TableHead className="w-48" /></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>Turma</TableHead><TableHead>Data agendada</TableHead><TableHead>Status</TableHead><TableHead>Chamada</TableHead><TableHead>Relatório</TableHead><TableHead className="w-48" /></TableRow></TableHeader>
             <TableBody>
               {lessons.map(l => (
                 <TableRow key={l.id}>
@@ -270,6 +272,16 @@ export default function LessonsPage() {
                       </Badge>
                     )}
                   </TableCell>
+                  <TableCell className="text-xs whitespace-nowrap">
+                    {l.attendance_total ? (() => {
+                      const rate = (l.present_count ?? 0) / l.attendance_total * 100
+                      return <>
+                        <span className="text-green-600 dark:text-green-400">{l.present_count} presentes</span>
+                        {" · "}<span className={l.absent_count ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}>{l.absent_count} {l.absent_count === 1 ? "falta" : "faltas"}</span>
+                        {" · "}<span className={cn("font-medium", ATTENDANCE_TEXT[attendanceLevel(rate, l.attendance_total)])}>{formatRate(rate)}</span>
+                      </>
+                    })() : <span className="text-muted-foreground">Pendente</span>}
+                  </TableCell>
                   <TableCell>{l.report ? <Badge variant="outline">Preenchido</Badge> : <span className="text-muted-foreground text-xs">—</span>}</TableCell>
                   <TableCell><div className="flex items-center gap-1">
                     <Button variant="default" size="sm" className="h-7 text-xs gap-1.5" asChild>
@@ -283,7 +295,7 @@ export default function LessonsPage() {
                   </div></TableCell>
                 </TableRow>
               ))}
-              {lessons.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhuma aula encontrada</TableCell></TableRow>}
+              {lessons.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhuma aula encontrada</TableCell></TableRow>}
             </TableBody>
           </Table>
         </div>

@@ -50,6 +50,13 @@ Nova entrada no menu, com um contador vermelho. O sistema identifica sozinho as 
 
 O que foi feito fica guardado no histórico do aluno. Se um aluno em risco faltar de novo depois de alguém resolver, a pendência volta e mostra o que foi feito da última vez.
 
+**Mensagens prontas no WhatsApp:** além do perfil do aluno, os modelos aparecem em três lugares:
+- **Alunos:** alunos com o selo **Novo** têm um botão verde para mandar as **boas-vindas**.
+- **Destaques:** **Convidar para o Day Out** monta o convite para os selecionados (ou todos os destaques positivos da lista). Preencha data, horário e local uma vez.
+- **Turma:** **Mensagem para a turma** serve para a **formatura** ou qualquer aviso para todos os alunos.
+
+Em envios para várias pessoas, cada botão abre uma conversa com a mensagem pronta; confirme no WhatsApp e volte para o próximo. O WhatsApp não permite disparo automático em massa sem a API paga do WhatsApp Business.
+
 **Contato direto:** pendências de alunos e de voluntários têm um botão de **WhatsApp** com uma mensagem sugerida. A mensagem só é enviada se você confirmar no WhatsApp.
 
 **Quem vê o quê:** volunteachers veem só as pendências das próprias turmas. Coordenação e administração veem todas, incluindo turmas sem professor, voluntários inativos, destaques positivos e livros atrasados.
@@ -112,7 +119,7 @@ Ao abrir uma turma, você encontra as abas:
 ## 5. Ficha do aluno
 
 - **Pendências do aluno** no topo da ficha, com as ações ali mesmo.
-- **Botão de WhatsApp** ao lado do nome, quando o aluno tem telefone cadastrado.
+- **Botão de WhatsApp** ao lado do nome, quando o aluno tem telefone cadastrado. Ele abre uma escolha de **modelos de mensagem** (contato geral, boas-vindas, convite do Day Out, formatura), que você pode editar antes de abrir o WhatsApp.
 - **Cards coloridos pela gravidade:** frequência, faltas (em % das aulas) e média.
 - **Aba "Presença":** mostra se o aluno fez o dever em cada aula.
 - **Aba "Acompanhamento":** o histórico de tudo o que foi feito pelo aluno, com a data e quem fez.
@@ -163,4 +170,4 @@ Nova tela no menu para responder perguntas como "quantas mulheres com Ensino Sup
 
 - **Para o volunteacher em sala:** Início → **Minhas turmas** → sua turma → **Fazer chamada** → **Todos presentes** → marque quem faltou e quem fez o dever → salvar.
 - **Para a secretaria ao abrir o sistema:** veja os números do Início e as **Prioridades**, depois vá em **Pendências** e registre o que foi feito em cada uma.
-- **Antes de um feriado:** cadastre-o no **Calendário**. As aulas desse dia passam a aparecer como pendência para serem canceladas ou remarcadas, e as próximas aulas geradas já pulam a data.
+- **Antes de um feriado:** cadastre-o em **Feriados e Eventos**. No começo do ano, o botão **Feriados nacionais** cadastra de uma vez todos os feriados nacionais (e, se quiser, o 9 de julho de SP); feriados municipais continuam sendo cadastrados à mão. As aulas desse dia passam a aparecer como pendência para serem canceladas ou remarcadas, e as próximas aulas geradas já pulam a data.

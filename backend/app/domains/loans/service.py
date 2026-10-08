@@ -3,9 +3,10 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.book import Book
 from app.models.book_loan import BookLoan
 from app.domains.loans.schemas import LoanCreate, LoanReturn
 
@@ -27,7 +28,19 @@ async def list_loans(
     return list(result.scalars().all())
 
 
+class NoCopiesAvailable(Exception):
+    pass
+
+
 async def create_loan(db: AsyncSession, payload: LoanCreate) -> BookLoan:
+    book = await db.get(Book, payload.book_id)
+    if book and book.copies is not None:
+        in_use = await db.scalar(
+            select(func.count()).select_from(BookLoan)
+            .where(BookLoan.book_id == payload.book_id, BookLoan.status == "active")
+        )
+        if (in_use or 0) >= book.copies:
+            raise NoCopiesAvailable
     loan = BookLoan(
         student_id=payload.student_id,
         book_id=payload.book_id,

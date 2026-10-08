@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class BookChapterBase(BaseModel):
@@ -32,6 +32,7 @@ class BookBase(BaseModel):
     description: str | None = None
     isbn: str | None = None
     active: bool | None = True
+    copies: int | None = Field(default=None, ge=0)
 
 
 class BookCreate(BookBase):
@@ -46,3 +47,5 @@ class BookResponse(BookBase):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID
     chapters: list[BookChapterResponse] = []
+    # Empréstimos em aberto (preenchido na listagem)
+    active_loans: int = 0

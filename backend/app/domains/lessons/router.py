@@ -10,6 +10,7 @@ from app.core.database import get_db
 from app.core.deps import check_class_access, get_current_user, require_role
 from app.domains.lessons.schemas import (
     LessonCreate,
+    LessonListItem,
     LessonMaterialBase,
     LessonMaterialResponse,
     LessonReportBase,
@@ -18,12 +19,21 @@ from app.domains.lessons.schemas import (
     LessonUpdate,
     UpcomingLesson,
 )
-from app.domains.lessons.service import add_material, create_lesson, get_lesson, list_lessons, list_upcoming, update_lesson, upsert_report
+from app.domains.lessons.service import (
+    add_material,
+    attendance_counts,
+    create_lesson,
+    get_lesson,
+    list_lessons,
+    list_upcoming,
+    update_lesson,
+    upsert_report,
+)
 
 router = APIRouter(prefix="/lessons", tags=["Lessons"])
 
 
-@router.get("", response_model=list[LessonResponse])
+@router.get("", response_model=list[LessonListItem])
 async def get_lessons(
     skip: int = 0,
     limit: int = 200,
@@ -35,7 +45,9 @@ async def get_lessons(
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_user),
 ):
-    return await list_lessons(db, skip, limit, class_id, teacher_id, status, start_date, end_date)
+    lessons = await list_lessons(db, skip, limit, class_id, teacher_id, status, start_date, end_date)
+    counts = await attendance_counts(db, [l.id for l in lessons])
+    return [LessonListItem.model_validate(l).model_copy(update=counts.get(l.id, {})) for l in lessons]
 
 
 # Antes de "/{lesson_id}" para não ser capturada como id

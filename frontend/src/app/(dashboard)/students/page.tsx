@@ -10,11 +10,13 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Pencil, Plus, Trash2, BookOpen, Download, Upload, FileSpreadsheet, ExternalLink } from "lucide-react"
+import { Pencil, Plus, Trash2, BookOpen, Download, Upload, FileSpreadsheet, ExternalLink, MessageCircle } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
 import { exportToExcel, downloadTemplate, parseExcel, fmtDate } from "@/lib/excel"
 import { toast } from "sonner"
+import { WhatsAppSendDialog, type WhatsAppRecipient } from "@/components/shared/WhatsAppSendDialog"
+import { whatsappNumber } from "@/lib/whatsapp"
 
 const EMPTY = {
   full_name: "", email: "", phone: "", gender: "", birth_date: "", unit_id: "", status: "active",
@@ -30,6 +32,9 @@ const STUDENT_HEADERS = [
   "Nome do responsável", "RG do responsável", "CPF do responsável",
   "Aceite de termos (Sim/Não)", "Autorização de imagem (Sim/Não)",
 ]
+
+// Alunos cadastrados há menos que isso recebem o selo "Novo" na lista
+const NEW_STUDENT_DAYS = 30
 
 function parseSimNao(val: unknown): boolean | undefined {
   const s = String(val ?? "").trim().toLowerCase()
@@ -53,6 +58,9 @@ export default function StudentsPage() {
   const [enrollClassId, setEnrollClassId] = useState("")
   const [filterUnit, setFilterUnit] = useState("all")
   const [filterStatus, setFilterStatus] = useState("all")
+  const [filterClass, setFilterClass] = useState("all")
+  const [newSince, setNewSince] = useState(0)
+  const [welcome, setWelcome] = useState<WhatsAppRecipient | null>(null)
   const [search, setSearch] = useState("")
   const [form, setForm] = useState({ ...EMPTY })
   const [saving, setSaving] = useState(false)
@@ -62,6 +70,7 @@ export default function StudentsPage() {
       const params: Record<string, string> = {}
       if (filterUnit !== "all") params.unit_id = filterUnit
       if (filterStatus !== "all") params.status = filterStatus
+      if (filterClass !== "all") params.class_id = filterClass
       if (isTeacher && user?.id) params.teacher_id = user.id
       const [sRes, uRes, cRes] = await Promise.all([
         studentsApi.list(params),
@@ -69,10 +78,11 @@ export default function StudentsPage() {
         classesApi.list(isTeacher && user?.id ? { teacher_id: user.id } : {}),
       ])
       setStudents(sRes.data); setUnits(uRes.data); setClasses(cRes.data)
+      setNewSince(Date.now() - NEW_STUDENT_DAYS * 86_400_000)
     } finally { setLoading(false) }
   }
 
-  useEffect(() => { if (!authLoading) load() }, [filterUnit, filterStatus, authLoading, isTeacher, user?.id])
+  useEffect(() => { if (!authLoading) load() }, [filterUnit, filterStatus, filterClass, authLoading, isTeacher, user?.id])
 
   function openEdit(s: Student) {
     setEditStudent(s)
@@ -154,6 +164,7 @@ export default function StudentsPage() {
     .filter(s => (s.full_name ?? "").toLowerCase().includes(search.trim().toLowerCase()))
     .sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? "", "pt-BR"))
   const classMap = Object.fromEntries(classes.map(c => [c.id, c.name]))
+  const isNew = (s: Student) => !!s.created_at && new Date(s.created_at).getTime() > newSince
   const unitNameMap = Object.fromEntries(units.map(u => [u.name?.toLowerCase() ?? "", u.id]))
 
   function handleExport() {
@@ -416,7 +427,19 @@ export default function StudentsPage() {
             {units.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Select value={filterClass} onValueChange={setFilterClass}>
+          <SelectTrigger className="w-52"><SelectValue placeholder="Filtrar por turma" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as turmas</SelectItem>
+            {classes
+              .filter(c => filterUnit === "all" || c.unit_id === filterUnit)
+              .map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </div>
+
+      <WhatsAppSendDialog open={!!welcome} onOpenChange={o => !o && setWelcome(null)} recipients={welcome ? [welcome] : []}
+        defaultTemplate="boas_vindas" title={`Boas-vindas — ${welcome?.name ?? ""}`} />
 
       {loading ? <p className="text-muted-foreground text-sm">Carregando…</p> : (
         <div className="rounded-md border bg-card overflow-x-auto">
@@ -424,6 +447,7 @@ export default function StudentsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Nome</TableHead>
+                <TableHead>Turma</TableHead>
                 {!isTeacher && <TableHead>Email</TableHead>}
                 <TableHead>WhatsApp</TableHead>
                 {!isTeacher && <TableHead>Nascimento</TableHead>}
@@ -434,7 +458,15 @@ export default function StudentsPage() {
             <TableBody>
               {visibleStudents.map(s => (
                 <TableRow key={s.id}>
-                  <TableCell className="font-medium">{s.full_name ?? "—"}</TableCell>
+                  <TableCell className="font-medium">
+                    {s.full_name ?? "—"}
+                    {isNew(s) && <Badge variant="outline" className="ml-2 text-[10px] border-primary/40 text-primary">Novo</Badge>}
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {s.class_ids?.length
+                      ? s.class_ids.map(id => classMap[id]).filter(Boolean).join(", ") || "—"
+                      : <span className="text-muted-foreground">—</span>}
+                  </TableCell>
                   {!isTeacher && <TableCell>{s.email ?? "—"}</TableCell>}
                   <TableCell>{s.phone ?? "—"}</TableCell>
                   {!isTeacher && <TableCell>{s.birth_date ? new Date(s.birth_date).toLocaleDateString("pt-BR") : "—"}</TableCell>}
@@ -444,6 +476,12 @@ export default function StudentsPage() {
                       <Link href={`/students/${s.id}`}><ExternalLink className="size-4" /></Link>
                     </Button>
                     <Button variant="ghost" size="icon" title="Matrículas" onClick={() => openEnroll(s)}><BookOpen className="size-4" /></Button>
+                    {isNew(s) && whatsappNumber(s.phone) && (
+                      <Button variant="ghost" size="icon" title="Enviar boas-vindas no WhatsApp" className="text-[#25D366] hover:text-[#1ebe5b]"
+                        onClick={() => setWelcome({ id: s.id, name: s.full_name, phone: s.phone, className: s.class_ids?.map(id => classMap[id]).filter(Boolean).join(", ") || null })}>
+                        <MessageCircle className="size-4" />
+                      </Button>
+                    )}
                     {canEdit && <>
                       <Button variant="ghost" size="icon" onClick={() => openEdit(s)}><Pencil className="size-4" /></Button>
                       <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" title="Excluir" onClick={() => handleDelete(s)}><Trash2 className="size-4" /></Button>
@@ -451,7 +489,7 @@ export default function StudentsPage() {
                   </div></TableCell>
                 </TableRow>
               ))}
-              {visibleStudents.length === 0 && <TableRow><TableCell colSpan={isTeacher ? 4 : 6} className="text-center text-muted-foreground py-8">Nenhum aluno encontrado</TableCell></TableRow>}
+              {visibleStudents.length === 0 && <TableRow><TableCell colSpan={isTeacher ? 5 : 7} className="text-center text-muted-foreground py-8">Nenhum aluno encontrado</TableCell></TableRow>}
             </TableBody>
           </Table>
         </div>

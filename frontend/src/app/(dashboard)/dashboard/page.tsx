@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { statsApi, classesApi, studentsApi, unitsApi, usersApi } from "@/lib/api"
 import type { Class_, Student, Unit, User } from "@/types"
+import { isVolunteacher } from "@/lib/users"
 import { useAuth } from "@/hooks/use-auth"
 import { useUpcomingLessons, UpcomingLessonsCard } from "@/components/shared/UpcomingLessons"
 import { MonthCalendar } from "@/components/shared/MonthCalendar"
@@ -101,11 +102,11 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!user?.role || isTeacher) return
-    Promise.all([statsApi.dashboard(), unitsApi.list(), usersApi.list()])
+    Promise.all([statsApi.dashboard(), unitsApi.list(), usersApi.list({ limit: 500 })])
       .then(([sRes, uRes, userRes]) => {
         setData(sRes.data)
         setUnits(uRes.data)
-        setTeacherUsers((userRes.data as User[]).filter(u => u.role === "teacher"))
+        setTeacherUsers((userRes.data as User[]).filter(isVolunteacher))
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false))

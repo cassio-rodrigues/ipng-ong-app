@@ -50,3 +50,8 @@ class StudentResponse(StudentBase):
     id: uuid.UUID
     status: str | None = None
     created_at: datetime | None = None
+
+
+class StudentListItem(StudentResponse):
+    # Turmas com matrícula ativa — exibidas na lista global de alunos
+    class_ids: list[uuid.UUID] = []

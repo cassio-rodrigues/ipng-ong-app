@@ -5,15 +5,13 @@ import { loansApi, studentsApi, booksApi } from "@/lib/api"
 import type { BookLoan, Student, Book } from "@/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Combobox } from "@/components/ui/combobox"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { BookOpen, Plus, RotateCcw, AlertCircle } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { toast } from "sonner"
+import { NewLoanDialog } from "@/components/shared/NewLoanDialog"
 
 const STATUS_LABEL: Record<string, string> = {
   active: "Emprestado",
@@ -33,8 +31,6 @@ function computedStatus(loan: BookLoan): string {
   return "active"
 }
 
-const today = () => new Date().toISOString().slice(0, 10)
-
 export default function LoansPage() {
   const { canEdit } = useAuth()
   const [loans, setLoans] = useState<BookLoan[]>([])
@@ -46,8 +42,6 @@ export default function LoansPage() {
   const [filterStatus, setFilterStatus] = useState("all")
   const [searchStudent, setSearchStudent] = useState("")
   const [searchBook, setSearchBook] = useState("")
-  const [form, setForm] = useState({ student_id: "", book_id: "", due_date: "", notes: "" })
-  const [saving, setSaving] = useState(false)
 
   async function load() {
     try {
@@ -66,26 +60,6 @@ export default function LoansPage() {
 
   useEffect(() => { load() }, [filterStatus])
 
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault()
-    if (!form.student_id || !form.book_id) return
-    setSaving(true)
-    try {
-      await loansApi.create({
-        student_id: form.student_id,
-        book_id: form.book_id,
-        due_date: form.due_date ? `${form.due_date}T23:59:00` : undefined,
-        notes: form.notes || undefined,
-      })
-      toast.success("Empréstimo registrado")
-      setCreateOpen(false)
-      setForm({ student_id: "", book_id: "", due_date: "", notes: "" })
-      await load()
-    } catch {
-      toast.error("Erro ao registrar empréstimo")
-    } finally { setSaving(false) }
-  }
-
   async function handleReturn(loan: BookLoan) {
     setReturning(loan.id)
     try {
@@ -97,7 +71,6 @@ export default function LoansPage() {
     } finally { setReturning(null) }
   }
 
-  const studentOptions = students.map(s => ({ value: s.id, label: s.full_name ?? s.id }))
   const fmt = (d: string | null) => d ? new Date(d).toLocaleDateString("pt-BR") : "—"
   const studentName = (id: string) => students.find(s => s.id === id)?.full_name ?? "—"
   const bookTitle = (id: string) => books.find(b => b.id === id)?.title ?? "—"
@@ -126,63 +99,9 @@ export default function LoansPage() {
           </p>
         </div>
         {canEdit && (
-          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm"><Plus className="size-4 mr-2" />Novo empréstimo</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader><DialogTitle>Registrar empréstimo</DialogTitle></DialogHeader>
-              <form onSubmit={handleCreate} className="space-y-4 mt-2">
-                <div className="space-y-1.5">
-                  <Label>Aluno</Label>
-                  <Combobox
-                    options={studentOptions}
-                    value={form.student_id}
-                    onValueChange={v => setForm(f => ({ ...f, student_id: v }))}
-                    placeholder="Buscar aluno pelo nome…"
-                    emptyText="Nenhum aluno encontrado"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Livro</Label>
-                  <Select value={form.book_id} onValueChange={v => setForm(f => ({ ...f, book_id: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Selecionar livro" /></SelectTrigger>
-                    <SelectContent>
-                      {books.filter(b => b.active !== false).map(b => (
-                        <SelectItem key={b.id} value={b.id}>
-                          {b.title ?? b.id}{b.author ? ` — ${b.author}` : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Data de devolução prevista</Label>
-                  <Input
-                    type="date"
-                    min={today()}
-                    value={form.due_date}
-                    onChange={e => setForm(f => ({ ...f, due_date: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Observações</Label>
-                  <Input
-                    value={form.notes}
-                    onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                    placeholder="Condição do livro, observações…"
-                  />
-                </div>
-                <div className="flex justify-end gap-2 pt-2">
-                  <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
-                  <Button type="submit" disabled={saving || !form.student_id || !form.book_id}>
-                    {saving ? "Salvando…" : "Registrar"}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+          <Button size="sm" onClick={() => setCreateOpen(true)}><Plus className="size-4 mr-2" />Novo empréstimo</Button>
         )}
+        <NewLoanDialog open={createOpen} onOpenChange={setCreateOpen} students={students} onCreated={load} />
       </div>
 
       <div className="flex flex-wrap gap-3 mb-4">

@@ -7,15 +7,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_role
-from app.domains.units.schemas import UnitCreate, UnitResponse, UnitUpdate
-from app.domains.units.service import create_unit, get_unit, list_units, update_unit
+from app.domains.units.schemas import UnitCreate, UnitListItem, UnitResponse, UnitUpdate
+from app.domains.units.service import count_by_unit, create_unit, get_unit, list_units, update_unit
 
 router = APIRouter(prefix="/units", tags=["Units"])
 
 
-@router.get("", response_model=list[UnitResponse])
+@router.get("", response_model=list[UnitListItem])
 async def get_units(skip: int = 0, limit: int = 50, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
-    return await list_units(db, skip, limit)
+    units = await list_units(db, skip, limit)
+    classes, students = await count_by_unit(db)
+    return [
+        UnitListItem.model_validate(u).model_copy(
+            update={"active_classes_count": classes.get(u.id, 0), "active_students_count": students.get(u.id, 0)}
+        )
+        for u in units
+    ]
 
 
 @router.post("", response_model=UnitResponse, status_code=status.HTTP_201_CREATED)

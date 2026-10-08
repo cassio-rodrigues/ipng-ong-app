@@ -29,6 +29,8 @@ export interface Unit {
   coordinator_id: string | null
   status: string | null
   created_at: string | null
+  active_classes_count?: number
+  active_students_count?: number
 }
 
 export interface Book {
@@ -39,6 +41,8 @@ export interface Book {
   description: string | null
   isbn: string | null
   active: boolean | null
+  copies: number | null  // exemplares físicos; null = estoque não controlado
+  active_loans?: number  // empréstimos em aberto (só na listagem)
   chapters: BookChapter[]
 }
 
@@ -109,6 +113,7 @@ export interface Student {
   guardian_cpf: string | null
   terms_accepted: boolean | null
   image_consent: boolean | null
+  class_ids?: string[]
 }
 
 export interface Enrollment {
@@ -129,6 +134,10 @@ export interface Lesson {
   status: string | null
   report?: LessonReport | null
   materials: LessonMaterial[]
+  // Só na listagem de aulas
+  attendance_total?: number
+  present_count?: number
+  absent_count?: number
 }
 
 export interface LessonReport {
@@ -157,6 +166,8 @@ export interface Attendance {
   check_in_time: string | null
   notes: string | null
   homework_status: HomeworkStatus | null  // null = não verificado
+  recorded_by_name?: string | null  // último registro/edição, segundo a auditoria
+  recorded_at?: string | null
 }
 
 export interface Assessment {

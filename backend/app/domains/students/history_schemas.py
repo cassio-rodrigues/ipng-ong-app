@@ -38,6 +38,7 @@ class AttendanceItem(BaseModel):
     notes: str | None
     homework_status: str | None = None  # done | not_done | na
     lesson: LessonBrief | None = None
+    recorded_by_name: str | None = None  # último registro/edição, segundo a auditoria
     model_config = {"from_attributes": True}
 
 
@@ -59,6 +60,10 @@ class AssessmentBrief(BaseModel):
     date: datetime | None
     max_score: int | None
     class_name: str | None = None
+    # Livro (módulo) da turma — agrupa as notas na evolução do aluno
+    book_id: uuid.UUID | None = None
+    book_title: str | None = None
+    book_level: str | None = None
     model_config = {"from_attributes": True}
 
 

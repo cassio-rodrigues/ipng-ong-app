@@ -16,6 +16,7 @@ import { useAuth } from "@/hooks/use-auth"
 import { exportToExcel, downloadTemplate, parseExcel, fmtDate } from "@/lib/excel"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { canTeach } from "@/lib/users"
 import { WEEKDAYS, formatSchedule, generateResultMessage, parseWeekday, parseTime } from "@/lib/schedule"
 
 const COL_DAY = "Dia da aula (segunda…domingo)"
@@ -70,7 +71,7 @@ export default function ClassesPage() {
       setClasses(cRes.data); setUnits(uRes.data); setBooks(bRes.data)
       if (user?.role && user.role !== "teacher") {
         const usrRes = await usersApi.list({ limit: 200 })
-        setTeachers(usrRes.data.filter((u: User) => u.role === "teacher" || u.role === "coordinator"))
+        setTeachers(usrRes.data.filter(canTeach))
       }
     } finally { setLoading(false) }
   }

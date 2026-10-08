@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -27,6 +27,7 @@ import {
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/hooks/use-auth"
 import { useAlerts } from "@/hooks/use-alerts"
+import { statsApi } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 
@@ -44,11 +45,24 @@ const allNavItems = [
   { href: "/assessments", label: "Avaliações", icon: Star, teacherHidden: false },
   { href: "/activities", label: "Atividades", icon: Zap, teacherHidden: false },
   { href: "/highlights", label: "Destaques", icon: Trophy, teacherHidden: false },
-  { href: "/calendar",        label: "Calendário",     icon: CalendarDays, teacherHidden: false },
+  { href: "/calendar",        label: "Feriados e Eventos", icon: CalendarDays, teacherHidden: false },
   { href: "/aniversariantes", label: "Aniversariantes", icon: Cake,         teacherHidden: false },
   { href: "/loans",           label: "Biblioteca",      icon: BookMarked,   teacherHidden: true  },
   { href: "/audit", label: "Auditoria", icon: ScrollText, teacherHidden: true },
 ]
+
+// Quantos aniversariam hoje (alunos e voluntários), para o selo no menu
+function useBirthdaysToday(enabled: boolean) {
+  const [count, setCount] = useState(0)
+  useEffect(() => {
+    if (!enabled) return
+    const today = new Date().getDate()
+    statsApi.birthdays()
+      .then(r => setCount((r.data as { day: number }[]).filter(p => p.day === today).length))
+      .catch(() => {})
+  }, [enabled])
+  return count
+}
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
@@ -58,6 +72,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const { alerts: allAlerts } = useAlerts()
   // Oportunidades (severity low, ex.: destaque positivo) não entram no contador vermelho
   const alerts = allAlerts.filter(a => a.severity !== "low")
+  const birthdaysToday = useBirthdaysToday(!!user)
 
   return (
     <div className="flex flex-col h-full">
@@ -88,6 +103,11 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
               {href === "/pendencias" && alerts.length > 0 && (
                 <span className="ml-auto rounded-full bg-red-600 px-2 py-0.5 text-xs font-bold text-white tabular-nums" aria-label={`${alerts.length} pendências`}>
                   {alerts.length}
+                </span>
+              )}
+              {href === "/aniversariantes" && birthdaysToday > 0 && (
+                <span className="ml-auto rounded-full bg-pink-500 px-2 py-0.5 text-xs font-bold text-white tabular-nums" title="Aniversariantes hoje" aria-label={`${birthdaysToday} aniversariante(s) hoje`}>
+                  🎂 {birthdaysToday}
                 </span>
               )}
             </Link>

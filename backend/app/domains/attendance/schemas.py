@@ -32,3 +32,6 @@ class AttendanceResponse(BaseModel):
     check_in_time: datetime | None = None
     notes: str | None = None
     homework_status: HomeworkStatus | None = None
+    # Último registro/edição, segundo a auditoria
+    recorded_by_name: str | None = None
+    recorded_at: datetime | None = None

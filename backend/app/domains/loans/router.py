@@ -28,7 +28,10 @@ async def create_loan(
     db=Depends(get_db),
     _=Depends(get_current_user),
 ):
-    return await service.create_loan(db, body)
+    try:
+        return await service.create_loan(db, body)
+    except service.NoCopiesAvailable:
+        raise HTTPException(status_code=409, detail="Todos os exemplares deste livro estão emprestados")
 
 
 @router.patch("/{loan_id}/return", response_model=LoanResponse)

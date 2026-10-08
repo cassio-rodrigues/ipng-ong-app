@@ -14,10 +14,14 @@ import { Pencil, Plus, Trash2, Download, Upload, FileSpreadsheet } from "lucide-
 import { useAuth } from "@/hooks/use-auth"
 import { exportToExcel, downloadTemplate, parseExcel } from "@/lib/excel"
 import { toast } from "sonner"
+import { availableCopies } from "@/lib/books"
 
 const BOOK_HEADERS = ["Título", "Autor", "Nível (A1/A2/B1/B2/C1/C2)", "ISBN", "Descrição"]
 const LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"]
-const EMPTY = { title: "", author: "", level: "", isbn: "", description: "" }
+const EMPTY = { title: "", author: "", level: "", isbn: "", description: "", copies: "" }
+
+// "" = sem controle de estoque
+function copiesPayload(v: string) { return v === "" ? null : Math.max(0, Number(v)) }
 
 export default function BooksPage() {
   const { canEdit } = useAuth()
@@ -38,18 +42,18 @@ export default function BooksPage() {
 
   function openEdit(b: Book) {
     setEditBook(b)
-    setForm({ title: b.title ?? "", author: b.author ?? "", level: b.level ?? "", isbn: b.isbn ?? "", description: b.description ?? "" })
+    setForm({ title: b.title ?? "", author: b.author ?? "", level: b.level ?? "", isbn: b.isbn ?? "", description: b.description ?? "", copies: b.copies == null ? "" : String(b.copies) })
   }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault(); setSaving(true)
-    try { await booksApi.create({ ...form, level: form.level || undefined }); setCreateOpen(false); setForm({ ...EMPTY }); await load() }
+    try { await booksApi.create({ ...form, level: form.level || undefined, copies: copiesPayload(form.copies) }); setCreateOpen(false); setForm({ ...EMPTY }); await load() }
     finally { setSaving(false) }
   }
 
   async function handleEdit(e: React.FormEvent) {
     e.preventDefault(); if (!editBook) return; setSaving(true)
-    try { await booksApi.update(editBook.id, { ...form, level: form.level || undefined }); setEditBook(null); await load() }
+    try { await booksApi.update(editBook.id, { ...form, level: form.level || undefined, copies: copiesPayload(form.copies) }); setEditBook(null); await load() }
     finally { setSaving(false) }
   }
 
@@ -112,6 +116,11 @@ export default function BooksPage() {
         </Select>
       </div>
       <div className="space-y-1.5"><Label>Descrição</Label><Input value={form.description} onChange={e => F("description", e.target.value)} /></div>
+      <div className="space-y-1.5">
+        <Label>Exemplares na biblioteca</Label>
+        <Input type="number" min={0} className="w-32" value={form.copies} onChange={e => F("copies", e.target.value)} placeholder="—" />
+        <p className="text-[11px] text-muted-foreground">Com o número preenchido, o sistema impede emprestar mais exemplares do que existem. Deixe vazio para não controlar.</p>
+      </div>
     </div>
   )
 
@@ -160,7 +169,7 @@ export default function BooksPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Título</TableHead><TableHead>Autor</TableHead><TableHead>Nível</TableHead><TableHead>ISBN</TableHead><TableHead>Capítulos</TableHead><TableHead>Status</TableHead><TableHead className="w-20" />
+                <TableHead>Título</TableHead><TableHead>Autor</TableHead><TableHead>Nível</TableHead><TableHead>ISBN</TableHead><TableHead>Capítulos</TableHead><TableHead>Disponíveis</TableHead><TableHead>Status</TableHead><TableHead className="w-20" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -171,6 +180,11 @@ export default function BooksPage() {
                   <TableCell>{b.level ? <Badge variant="outline">{b.level}</Badge> : "—"}</TableCell>
                   <TableCell>{b.isbn ?? "—"}</TableCell>
                   <TableCell>{b.chapters?.length ?? 0}</TableCell>
+                  <TableCell className="tabular-nums">
+                    {b.copies == null
+                      ? <span className="text-muted-foreground text-xs">{b.active_loans ? `${b.active_loans} emprestado(s)` : "—"}</span>
+                      : <span className={availableCopies(b) === 0 ? "text-red-600 dark:text-red-400 font-medium" : ""}>{availableCopies(b)} de {b.copies}</span>}
+                  </TableCell>
                   <TableCell><Badge variant={b.active ? "default" : "secondary"}>{b.active ? "Ativo" : "Inativo"}</Badge></TableCell>
                   <TableCell>
                     {canEdit && <div className="flex gap-1">
@@ -180,7 +194,7 @@ export default function BooksPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {books.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum livro cadastrado</TableCell></TableRow>}
+              {books.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum livro cadastrado</TableCell></TableRow>}
             </TableBody>
           </Table>
         </div>

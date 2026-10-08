@@ -5,6 +5,8 @@ import uuid
 from fastapi import HTTPException, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.database import alphabetical
 from sqlalchemy.orm import selectinload
 
 from app.domains.classes.schemas import ClassAssignmentBase, ClassCreate, ClassSummary, ClassStudentSummary, ClassUpdate
@@ -34,7 +36,7 @@ async def list_classes(
     if teacher_id:
         assigned = select(ClassAssignment.class_id).where(ClassAssignment.teacher_id == teacher_id)
         q = q.where(or_(Class_.main_teacher_id == teacher_id, Class_.id.in_(assigned)))
-    result = await db.execute(q.offset(skip).limit(limit))
+    result = await db.execute(q.order_by(alphabetical(Class_.name)).offset(skip).limit(limit))
     return list(result.scalars().all())
 
 
@@ -90,6 +92,7 @@ async def get_class_students(db: AsyncSession, class_id: uuid.UUID):
         select(Student)
         .join(Enrollment, Enrollment.student_id == Student.id)
         .where(Enrollment.class_id == class_id, Enrollment.status == "active")
+        .order_by(alphabetical(Student.full_name))
     )
     return list(result.scalars().all())
 
