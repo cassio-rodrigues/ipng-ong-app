@@ -37,6 +37,8 @@ class UserCreate(UserBase):
 class UserUpdate(UserBase):
     password: str | None = None
     status: str | None = None
+    # Exige troca no próximo login. Se omitido e uma senha for definida, a senha vale como provisória.
+    must_change_password: bool | None = None
 
 
 class UserResponse(UserBase):

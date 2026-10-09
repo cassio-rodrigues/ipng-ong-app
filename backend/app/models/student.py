@@ -31,6 +31,12 @@ class Student(Base):
     guardian_cpf: Mapped[str | None] = mapped_column(String)
     terms_accepted: Mapped[bool | None] = mapped_column(Boolean, default=False)
     image_consent: Mapped[bool | None] = mapped_column(Boolean, default=False)
+    # Prova do consentimento (LGPD art. 8º e 14): quando, por quem e em qual versão do termo.
+    # Preenchidos pelo servidor quando o aceite é marcado; limpos quando é retirado.
+    terms_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    terms_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    consent_given_by: Mapped[str | None] = mapped_column(String, nullable=True)
+    image_consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     unit: Mapped["Unit | None"] = relationship("Unit", foreign_keys=[unit_id], lazy="selectin")  # type: ignore[name-defined]
     enrollments: Mapped[list[Enrollment]] = relationship("Enrollment", back_populates="student", cascade="all, delete-orphan", lazy="selectin")

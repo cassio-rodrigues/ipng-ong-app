@@ -36,6 +36,15 @@ const STUDENT_HEADERS = [
 // Alunos cadastrados há menos que isso recebem o selo "Novo" na lista
 const NEW_STUDENT_DAYS = 30
 
+// Menor de 18 anos na data de hoje (a LGPD exige consentimento do responsável)
+function isMinorBirth(birth: string): boolean {
+  if (!birth) return false
+  const [y, m, d] = birth.split("-").map(Number)
+  const now = new Date()
+  const age = now.getFullYear() - y - ((now.getMonth() + 1 < m || (now.getMonth() + 1 === m && now.getDate() < d)) ? 1 : 0)
+  return age < 18
+}
+
 function parseSimNao(val: unknown): boolean | undefined {
   const s = String(val ?? "").trim().toLowerCase()
   if (s === "sim") return true
@@ -167,8 +176,10 @@ export default function StudentsPage() {
   const isNew = (s: Student) => !!s.created_at && new Date(s.created_at).getTime() > newSince
   const unitNameMap = Object.fromEntries(units.map(u => [u.name?.toLowerCase() ?? "", u.id]))
 
+  // Volunteachers exportam só identificação e contato (a API nem envia documentos para eles)
+  const DOC_COLUMNS = ["Endereço", "RG", "CPF", "RG do responsável", "CPF do responsável"]
   function handleExport() {
-    exportToExcel(students.map(s => ({
+    exportToExcel(students.map(s => withoutDocs({
       "Nome completo": s.full_name ?? "",
       "Email": s.email ?? "",
       "Telefone": s.phone ?? "",
@@ -185,6 +196,11 @@ export default function StudentsPage() {
       "Aceite de termos (Sim/Não)": s.terms_accepted === true ? "Sim" : s.terms_accepted === false ? "Não" : "",
       "Autorização de imagem (Sim/Não)": s.image_consent === true ? "Sim" : s.image_consent === false ? "Não" : "",
     })), "alunos")
+  }
+
+  function withoutDocs(row: Record<string, unknown>) {
+    if (canEdit) return row
+    return Object.fromEntries(Object.entries(row).filter(([k]) => !DOC_COLUMNS.includes(k)))
   }
 
   async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
@@ -302,6 +318,17 @@ export default function StudentsPage() {
 
       {/* Consentimentos */}
       <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-1">Consentimentos</p>
+      {isMinorBirth(form.birth_date) && (
+        <p className="text-xs rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+          Aluno menor de idade: o aceite e a autorização de imagem precisam ser dados pelo responsável. Preencha o nome do responsável acima.
+        </p>
+      )}
+      {isEdit && editStudent?.terms_accepted_at && (
+        <p className="text-[11px] text-muted-foreground">
+          Termo (versão {editStudent.terms_version ?? "—"}) aceito por {editStudent.consent_given_by ?? "—"} em {new Date(editStudent.terms_accepted_at).toLocaleString("pt-BR")}
+          {editStudent.image_consent_at && <> · imagem autorizada em {new Date(editStudent.image_consent_at).toLocaleDateString("pt-BR")}</>}
+        </p>
+      )}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label>Aceite de termos</Label>

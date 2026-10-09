@@ -23,11 +23,13 @@ import {
   Cake,
   BellRing,
   BarChart3,
+  KeyRound,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/hooks/use-auth"
 import { useAlerts } from "@/hooks/use-alerts"
 import { statsApi } from "@/lib/api"
+import { ChangePasswordModal } from "@/components/shared/ChangePasswordModal"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 
@@ -66,13 +68,14 @@ function useBirthdaysToday(enabled: boolean) {
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
-  const { user, logout } = useAuth()
+  const { user, logout, logoutAll } = useAuth()
   const isTeacher = user?.role === "teacher"
   const navItems = allNavItems.filter(item => !isTeacher || !item.teacherHidden)
   const { alerts: allAlerts } = useAlerts()
   // Oportunidades (severity low, ex.: destaque positivo) não entram no contador vermelho
   const alerts = allAlerts.filter(a => a.severity !== "low")
   const birthdaysToday = useBirthdaysToday(!!user)
+  const [passwordOpen, setPasswordOpen] = useState(false)
 
   return (
     <div className="flex flex-col h-full">
@@ -129,6 +132,25 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
           <LogOut className="size-4" />
           Sair
         </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start gap-3 text-muted-foreground"
+          onClick={() => setPasswordOpen(true)}
+        >
+          <KeyRound className="size-4" />
+          Alterar senha
+        </Button>
+        <ChangePasswordModal forced={false} open={passwordOpen} onOpenChange={setPasswordOpen} onSuccess={() => setPasswordOpen(false)} />
+        <div className="flex justify-between px-3 pt-1 text-[11px] text-muted-foreground">
+          <button
+            type="button" className="hover:text-destructive hover:underline"
+            onClick={() => { if (confirm("Encerrar sua sessão em todos os computadores e celulares?")) logoutAll() }}
+          >
+            Sair de todos os dispositivos
+          </button>
+          <Link href="/privacidade" onClick={onNavigate} className="hover:underline">Privacidade</Link>
+        </div>
       </div>
     </div>
   )

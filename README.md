@@ -327,6 +327,10 @@ docker compose -f docker-compose.prod.yml exec backend python seed.py
 
 **Troque a senha do admin imediatamente após o primeiro login.**
 
+### 4. Checklist de privacidade (LGPD)
+
+Antes de liberar o acesso, siga o [checklist de produção da seção Privacidade e LGPD](#checklist-de-produção).
+
 ### Comandos úteis
 
 ```bash
@@ -344,6 +348,11 @@ make prod-logs     # acompanha logs em tempo real
 - Senhas com hash `bcrypt` (custo 12)
 - JWT com expiração de 60 minutos
 - Refresh token com expiração de 7 dias
+- Sessões revogáveis: trocar a senha, ter a senha redefinida pelo admin ou usar "Sair de todos os dispositivos" invalida todos os tokens emitidos (`users.token_version`)
+- Por padrão a sessão fica no `sessionStorage` e termina ao fechar o navegador; "Manter conectado" usa `localStorage`
+- Limite de 5 tentativas de login por minuto
+- Senhas com no mínimo 8 caracteres. Conta nova e senha definida pela coordenação são **provisórias**: a pessoa cria a própria senha no primeiro acesso. A coordenação também pode marcar "Exigir troca de senha no próximo login" no cadastro do usuário
+- **Esqueceu sua senha?** envia por email um link de redefinição válido por 30 minutos e de uso único (o token embute uma impressão digital da senha atual). A resposta é a mesma exista ou não a conta, e o pedido é limitado a 3 por minuto. Requer as variáveis `SMTP_*` e `APP_URL` no `.env`; sem elas, a tela orienta a procurar a coordenação
 
 ### Transporte
 - HTTPS obrigatório em produção (TLS 1.2 e 1.3)
@@ -353,17 +362,97 @@ make prod-logs     # acompanha logs em tempo real
 ### API
 - CORS restrito às origens configuradas em `CORS_ORIGINS`
 - Backend não expõe portas diretamente ao exterior em produção (apenas via Nginx)
-- `SECRET_KEY` gerada com `openssl rand -hex 32`
+- `SECRET_KEY` gerada com `openssl rand -hex 32` — com `DEBUG=false` o backend se recusa a subir com a chave padrão ou com menos de 32 caracteres
+- Coordenação não altera contas de admin nem concede o perfil de admin
 
 ### Dados
 - Soft-delete na maioria das entidades (campo `status`)
-- Logs de auditoria para ações críticas
+- Auditoria automática de toda criação, edição e exclusão (ver [Privacidade e LGPD](#privacidade-e-lgpd))
 - Banco de dados acessível apenas pela rede interna do Docker
 
 ### Boas práticas recomendadas
 - Trocar a senha do admin padrão imediatamente após o primeiro deploy
 - Manter o `.env` fora do controle de versão (já no `.gitignore`)
-- Fazer backup periódico do volume `pgdata` com `docker run --rm -v ipng-ong-app_pgdata:/data -v $(pwd):/backup alpine tar czf /backup/pgdata.tar.gz /data`
+- Fazer backup diário e criptografado com `make prod-backup` (requer `BACKUP_PASSPHRASE` no `.env`; guarde a senha fora da VPS). Para agendar, `crontab -e` na VPS:
+  `0 3 * * * cd /root/ipng-ong-app && ./scripts/backup.sh >> backups/backup.log 2>&1`
+  Copie a pasta `backups/` para fora da VPS periodicamente. Restauração: `./scripts/backup.sh restore backups/<arquivo>`.
+
+---
+
+## Privacidade e LGPD
+
+O sistema guarda dados pessoais de alunos — muitos deles **menores de idade** — incluindo CPF, RG, endereço e dados do responsável. Por isso a Lei Geral de Proteção de Dados (Lei 13.709/2018) se aplica com o rigor do art. 14 (crianças e adolescentes). Esta seção descreve o que o código faz e o que fica sob responsabilidade da ONG.
+
+> Esta é uma descrição técnica, não um parecer jurídico. A política de privacidade e os termos devem ser revisados por alguém da área.
+
+### Dados tratados
+
+| Titular | Dados | Onde |
+|---|---|---|
+| Aluno | Nome, nascimento, sexo, email, WhatsApp, escolaridade, unidade e turmas | `students`, `enrollments` |
+| Aluno (sensíveis para a ONG) | RG, CPF, endereço | `students` |
+| Responsável (aluno menor) | Nome, RG, CPF | `students.guardian_*` |
+| Aluno (pedagógico) | Frequência, dever de casa, notas, atividades, destaques, acompanhamentos, empréstimos | `attendance`, `student_grades`, `student_highlights`, `student_followups`, `book_loans`… |
+| Voluntários e equipe | Nome, email, telefone, nascimento, sexo, perfil | `users` |
+| Uso do sistema | Quem criou, editou ou excluiu cada registro e quando | `audit_logs` |
+
+### Medidas implementadas
+
+**Minimização e controle de acesso (art. 6º, III e VII)** — `backend/app/core/privacy.py`
+- Admin e coordenação veem o cadastro completo.
+- Volunteachers veem **apenas os alunos das turmas em que dão aula** (principal ou atribuído), e a API **não envia** CPF, RG, endereço nem documentos do responsável (`SENSITIVE_STUDENT_FIELDS`). O WhatsApp continua visível para o contato com a turma.
+- Aluno ou turma fora do escopo: a API responde 404/403 — a regra está no servidor, não só escondida na tela.
+- Entre colegas, `GET /users/{id}` mostra nome e perfil; email, telefone e nascimento só para o próprio usuário e a coordenação (`SENSITIVE_USER_FIELDS`).
+- Exportações de volunteachers saem sem as colunas de documentos.
+
+**Consentimento (arts. 7º, I, 8º e 14)**
+- Ao marcar "Aceite de termos" ou "Autorização de imagem", o servidor grava a data (`terms_accepted_at`, `image_consent_at`), a versão do termo (`terms_version`, vinda de `TERMS_VERSION` em `backend/app/core/config.py`) e quem consentiu (`consent_given_by`).
+- **Menor de 18 anos:** o consentimento só é aceito com o nome do responsável preenchido — quem consente é o responsável.
+- Retirar o consentimento apaga o registro correspondente.
+
+**Direitos do titular (art. 18)** — no perfil do aluno, apenas coordenação
+- **Exportar dados** (acesso, art. 18, II): baixa um JSON com cadastro, histórico (frequência, notas, atividades, destaques, empréstimos) e acompanhamentos.
+- **Anonimizar** (eliminação, art. 18, VI, e fim do tratamento, art. 16): apaga nome, contato, nascimento, documentos, endereço, dados do responsável e o registro de consentimento, e inativa o aluno. Frequência e notas continuam nas estatísticas sem identificar a pessoa. Endpoint `POST /students/{id}/anonymize`.
+- **Correção** (art. 18, III): edição normal do cadastro.
+
+**Auditoria sem cópia de dados pessoais** — `backend/app/core/audit.py`
+- Toda criação, edição e exclusão é registrada com autor e data, o que permite demonstrar responsabilidade (art. 6º, X).
+- Documentos, endereço, contato, nascimento e dados do responsável **nunca têm o valor gravado** no log (`MASKED_FIELDS`) — só a indicação de que mudaram. Assim, excluir ou anonimizar um aluno apaga esses dados de fato.
+- Na anonimização, o log registra quais campos mudaram sem nenhum valor, nem o nome antigo.
+- A migração `0014` mascarou os registros gravados antes dessa regra.
+
+**Segurança (art. 46)**
+- HTTPS obrigatório, senhas com bcrypt, banco acessível só pela rede interna do Docker.
+- Sessões revogáveis e, por padrão, encerradas ao fechar o navegador (computadores compartilhados).
+- Backend não sobe em produção com `SECRET_KEY` fraca.
+- Backup criptografado (AES-256, chave em `BACKUP_PASSPHRASE`) com `make prod-backup` — `scripts/backup.sh`.
+
+**Transparência (art. 9º)**
+- Página pública `/privacidade` (`frontend/src/app/privacidade/page.tsx`), com link na tela de login e no rodapé do menu. É um **rascunho**: os trechos entre [colchetes] devem ser preenchidos pela ONG.
+
+### Checklist de produção
+
+- [ ] `SECRET_KEY` com 32+ caracteres no `.env` (`openssl rand -hex 32`)
+- [ ] `BACKUP_PASSPHRASE` no `.env`, guardada também **fora** da VPS
+- [ ] Backup diário agendado no `crontab` e cópia periódica de `backups/` para fora da VPS
+- [ ] `make prod-migrate` aplicado (inclui `0014`–`0016`)
+- [ ] Senha do admin padrão trocada
+- [ ] Política em `/privacidade` preenchida e revisada; ao mudar o texto, atualizar `TERMS_VERSION` e a versão exibida na página
+
+### Responsabilidades da ONG (fora do código)
+
+- **Encarregado (DPO):** indicar a pessoa e o contato na política de privacidade.
+- **Termo de consentimento** assinado pelo responsável para alunos menores, guardado pela ONG — o sistema registra quem consentiu, mas não substitui o documento.
+- **Prazo de guarda:** definir por quanto tempo manter dados de ex-alunos e usar **Anonimizar** quando vencer.
+- **Pedidos dos titulares:** canal para receber pedidos de cópia, correção e exclusão, com resposta no prazo definido na política.
+- **Incidentes:** em caso de vazamento, comunicar a ANPD e os titulares afetados (art. 48).
+- **Acessos:** desativar usuários de voluntários que saírem do projeto.
+
+### Ao desenvolver
+
+- Toda rota nova que devolva dados de aluno ou usuário deve passar por `ensure_student_visible` / `redact` (`core/privacy.py`). Nunca confie só em esconder a coluna no frontend.
+- Campo novo com dado pessoal: avalie incluir em `SENSITIVE_STUDENT_FIELDS` / `SENSITIVE_USER_FIELDS`, em `MASKED_FIELDS` (auditoria) e em `PERSONAL_FIELDS` (anonimização, `domains/students/service.py`).
+- Não grave dados pessoais em logs de aplicação nem em mensagens de erro.
 
 ---
 
@@ -379,3 +468,6 @@ make prod-logs     # acompanha logs em tempo real
 - Sistema: https://gestao.inglesparanossagente.org
 - API: https://api.gestao.inglesparanossagente.org
 - Swagger: https://api.gestao.inglesparanossagente.org/docs
+
+
+

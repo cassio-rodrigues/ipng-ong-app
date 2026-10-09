@@ -7,6 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.deps import check_class_access, get_current_user, require_role
+from app.core.privacy import SENSITIVE_STUDENT_FIELDS, redact
+from app.domains.students.schemas import StudentResponse
 from app.domains.classes.schedule import drop_future_empty_lessons, generate_lessons
 from app.domains.classes.schemas import (
     ClassAssignmentBase, ClassAssignmentResponse, ClassCreate, ClassResponse, ClassSummary, ClassUpdate,
@@ -97,9 +99,13 @@ async def generate(
     return await generate_lessons(db, obj, body.until)
 
 
-@router.get("/{class_id}/students")
-async def get_students(class_id: uuid.UUID, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
-    return await get_class_students(db, class_id)
+@router.get("/{class_id}/students", response_model=list[StudentResponse])
+async def get_students(class_id: uuid.UUID, db: AsyncSession = Depends(get_db), current_user=Depends(get_current_user)):
+    await check_class_access(db, class_id, current_user)
+    return [
+        redact(StudentResponse.model_validate(s), current_user, SENSITIVE_STUDENT_FIELDS)
+        for s in await get_class_students(db, class_id)
+    ]
 
 
 @router.post("/{class_id}/assignments", response_model=ClassAssignmentResponse, status_code=status.HTTP_201_CREATED)
@@ -129,7 +135,9 @@ async def unassign_teacher(
 
 
 @router.get("/{class_id}/summary", response_model=ClassSummary)
-async def get_summary(class_id: uuid.UUID, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
+async def get_summary(class_id: uuid.UUID, db: AsyncSession = Depends(get_db), current_user=Depends(get_current_user)):
+    # Frequência e notas por aluno: só quem dá aula na turma (ou coordenação)
+    await check_class_access(db, class_id, current_user)
     obj = await get_class(db, class_id)
     if not obj:
         raise HTTPException(status_code=404, detail="Turma não encontrada")

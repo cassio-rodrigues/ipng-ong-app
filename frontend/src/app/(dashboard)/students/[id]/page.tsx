@@ -1,6 +1,7 @@
 "use client"
 
 import { Fragment, useEffect, useState } from "react"
+import { toast } from "sonner"
 import { useParams, useRouter } from "next/navigation"
 import { studentsApi, alertsApi } from "@/lib/api"
 import { useAlerts, ALERTS_CHANGED } from "@/hooks/use-alerts"
@@ -32,6 +33,8 @@ import {
   AlertTriangle,
   Plus,
   MessageCircle,
+  Download,
+  UserX,
 } from "lucide-react"
 import { NewLoanDialog } from "@/components/shared/NewLoanDialog"
 import { cn } from "@/lib/utils"
@@ -169,6 +172,37 @@ export default function StudentHistoryPage() {
       .finally(() => setLoading(false))
   }, [id])
 
+  // Cópia completa dos dados do aluno, para atender pedidos de acesso (LGPD art. 18, II)
+  async function exportPersonalData() {
+    const [studentRes, historyRes, followRes] = await Promise.all([
+      studentsApi.get(id), studentsApi.getHistory(id), alertsApi.followups(id),
+    ])
+    const payload = {
+      gerado_em: new Date().toISOString(),
+      aviso: "Dados pessoais tratados pelo Inglês Para Nossa Gente sobre este aluno.",
+      cadastro: studentRes.data,
+      historico: historyRes.data,
+      acompanhamentos: followRes.data,
+    }
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `dados_${(studentRes.data.full_name ?? "aluno").replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  async function handleAnonymize() {
+    if (!confirm(
+      "Anonimizar este aluno?\n\nNome, contato, documentos, endereço e dados do responsável serão apagados de forma definitiva. " +
+      "Frequência, notas e turmas continuam nas estatísticas, sem identificar a pessoa. Exporte os dados antes, se o aluno pediu uma cópia."
+    )) return
+    await studentsApi.anonymize(id)
+    toast.success("Aluno anonimizado")
+    await reloadHistory()
+  }
+
   async function reloadHistory() {
     const r = await studentsApi.getHistory(id)
     setHistory(r.data)
@@ -214,6 +248,17 @@ export default function StudentHistoryPage() {
             {student.phone && <> · {student.phone}</>}
           </p>
         </div>
+        {canEdit && (
+          <Button size="sm" variant="outline" onClick={exportPersonalData} title="Gera um arquivo com todos os dados do aluno, para pedidos de acesso (LGPD)">
+            <Download className="size-4 mr-1.5" />Exportar dados
+          </Button>
+        )}
+        {canEdit && student.full_name !== "Aluno anonimizado" && (
+          <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={handleAnonymize}
+            title="Apaga os dados que identificam o aluno, mantendo o histórico nas estatísticas (LGPD)">
+            <UserX className="size-4 mr-1.5" />Anonimizar
+          </Button>
+        )}
         {whatsappNumber(student.phone) && (
           <>
             <Button size="sm" className="bg-[#25D366] text-white hover:bg-[#1ebe5b]" onClick={() => setWaOpen(true)}>

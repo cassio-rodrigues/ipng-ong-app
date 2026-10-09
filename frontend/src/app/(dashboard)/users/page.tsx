@@ -37,6 +37,7 @@ export default function UsersPage() {
   const [editUser, setEditUser] = useState<User | null>(null)
   const [form, setForm] = useState({ ...EMPTY })
   const [atribuicoes, setAtribuicoes] = useState<string[]>([])
+  const [forceChange, setForceChange] = useState(false)
   const [saving, setSaving] = useState(false)
 
   async function load() {
@@ -52,6 +53,7 @@ export default function UsersPage() {
     setEditUser(u)
     setForm({ name: u.name ?? "", email: u.email ?? "", password: "", role: u.role ?? "teacher", telefone: u.telefone ?? "", gender: u.gender ?? "", birth_date: u.birth_date ? u.birth_date.slice(0, 10) : "", status: u.status ?? "active" })
     setAtribuicoes(u.atribuicoes ?? [])
+    setForceChange(!!u.must_change_password)
   }
 
   function toggleAtribuicao(val: string) {
@@ -69,7 +71,7 @@ export default function UsersPage() {
   async function handleEdit(e: React.FormEvent) {
     e.preventDefault(); if (!editUser) return; setSaving(true)
     try {
-      const payload: Record<string, unknown> = { name: form.name, email: form.email, role: form.role, telefone: form.telefone, status: form.status, gender: form.gender || undefined, birth_date: form.birth_date || undefined, atribuicoes: atribuicoes.length ? atribuicoes : null }
+      const payload: Record<string, unknown> = { name: form.name, email: form.email, role: form.role, telefone: form.telefone, status: form.status, gender: form.gender || undefined, birth_date: form.birth_date || undefined, atribuicoes: atribuicoes.length ? atribuicoes : null, must_change_password: forceChange }
       if (form.password) payload.password = form.password
       await usersApi.update(editUser.id, payload)
       setEditUser(null); await load()
@@ -138,8 +140,23 @@ export default function UsersPage() {
       <div className="space-y-1.5"><Label>Email</Label><Input type="email" value={form.email} onChange={e => F("email", e.target.value)} required /></div>
       <div className="space-y-1.5">
         <Label>{isEdit ? "Nova senha (deixe vazio para manter)" : "Senha"}</Label>
-        <Input type="password" value={form.password} onChange={e => F("password", e.target.value)} required={!isEdit} />
+        <Input type="password" value={form.password} autoComplete="new-password" required={!isEdit} minLength={8}
+          onChange={e => {
+            // Senha definida pela coordenação é provisória: liga a troca obrigatória ao começar a digitar
+            if (isEdit && !form.password && e.target.value) setForceChange(true)
+            F("password", e.target.value)
+          }} />
+        {!isEdit && <p className="text-[11px] text-muted-foreground">Senha provisória (mínimo 8 caracteres): a pessoa cria a própria senha no primeiro acesso.</p>}
       </div>
+      {isEdit && (
+        <label className="flex items-start gap-2 text-sm cursor-pointer">
+          <input type="checkbox" className="h-4 w-4 mt-0.5" checked={forceChange} onChange={e => setForceChange(e.target.checked)} />
+          <span>
+            Exigir troca de senha no próximo login
+            <span className="block text-[11px] text-muted-foreground">Ao entrar, a pessoa precisa criar uma senha nova antes de usar o sistema.</span>
+          </span>
+        </label>
+      )}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label>Data de nascimento</Label>
@@ -291,7 +308,14 @@ export default function UsersPage() {
                         : <span className="text-muted-foreground text-xs">—</span>}
                     </div>
                   </TableCell>
-                  <TableCell><Badge variant={u.status === "active" ? "default" : "secondary"}>{u.status === "active" ? "Ativo" : "Inativo"}</Badge></TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      <Badge variant={u.status === "active" ? "default" : "secondary"}>{u.status === "active" ? "Ativo" : "Inativo"}</Badge>
+                      {u.must_change_password && u.status === "active" && (
+                        <Badge variant="outline" className="border-amber-400 text-amber-700 dark:text-amber-300" title="Precisa criar uma senha nova no próximo login">Troca de senha pendente</Badge>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell>{canEdit && <div className="flex gap-1">
                     <Button variant="ghost" size="icon" onClick={() => openEdit(u)}><Pencil className="size-4" /></Button>
                     <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" title="Excluir" onClick={() => handleDelete(u)}><Trash2 className="size-4" /></Button>

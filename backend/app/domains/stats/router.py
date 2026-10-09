@@ -3,11 +3,12 @@ from __future__ import annotations
 from datetime import date as date_type, datetime, timedelta
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import case, func, or_, select
+from sqlalchemy import case, func, or_, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_role
+from app.core.privacy import is_privileged, students_in_classes, visible_class_ids
 from app.core.tz import LOCAL_TZ
 from app.models.book import Book
 from app.domains.stats.schemas import (
@@ -120,9 +121,10 @@ async def dashboard_stats(
 async def birthday_list(
     month: int | None = None,
     db: AsyncSession = Depends(get_db),
-    _=Depends(get_current_user),
+    current_user=Depends(get_current_user),
 ):
     target_month = month if month else date_type.today().month
+    scope = await visible_class_ids(db, current_user)
 
     # Alunos com aniversário no mês — agrega turmas via string_agg
     student_rows = (await db.execute(
@@ -143,6 +145,7 @@ async def birthday_list(
         .outerjoin(Class_, Class_.id == Enrollment.class_id)
         .where(func.extract("month", Student.birth_date) == target_month)
         .where(Student.status == "active")
+        .where(Student.id.in_(students_in_classes(scope)) if scope is not None else true())
         .group_by(Student.id, Unit.name)
         .order_by(func.extract("day", Student.birth_date))
     )).all()
@@ -186,7 +189,7 @@ async def birthday_list(
             classes=[],
             unit=None,
             role=r.role,
-            phone=r.telefone,
+            phone=r.telefone if is_privileged(current_user) or r.id == current_user.id else None,
         ))
 
     result.sort(key=lambda x: x.day)

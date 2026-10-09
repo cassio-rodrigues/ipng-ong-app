@@ -171,3 +171,14 @@ Nova tela no menu para responder perguntas como "quantas mulheres com Ensino Sup
 - **Para o volunteacher em sala:** Início → **Minhas turmas** → sua turma → **Fazer chamada** → **Todos presentes** → marque quem faltou e quem fez o dever → salvar.
 - **Para a secretaria ao abrir o sistema:** veja os números do Início e as **Prioridades**, depois vá em **Pendências** e registre o que foi feito em cada uma.
 - **Antes de um feriado:** cadastre-o em **Feriados e Eventos**. No começo do ano, o botão **Feriados nacionais** cadastra de uma vez todos os feriados nacionais (e, se quiser, o 9 de julho de SP); feriados municipais continuam sendo cadastrados à mão. As aulas desse dia passam a aparecer como pendência para serem canceladas ou remarcadas, e as próximas aulas geradas já pulam a data.
+
+
+## Privacidade e LGPD
+
+- **Volunteachers** veem apenas os alunos das próprias turmas, sem CPF, RG, endereço e documentos do responsável. Contato (WhatsApp) continua visível para poderem falar com a turma.
+- **Consentimento:** ao marcar "Aceite de termos" ou "Autorização de imagem", o sistema guarda a data, a versão do termo e quem consentiu. Para **menores de 18 anos**, é obrigatório preencher o nome do responsável.
+- **Pedido de cópia dos dados:** no perfil do aluno, **Exportar dados** baixa um arquivo com tudo o que o sistema tem sobre ele.
+- **Pedido de exclusão ou fim do prazo de guarda:** **Anonimizar** apaga nome, contato, documentos, endereço e dados do responsável de forma definitiva. Frequência e notas continuam nas estatísticas, sem identificar a pessoa.
+- **Senha:** contas novas recebem uma senha provisória, e a pessoa cria a própria no primeiro acesso. Em **Usuários → editar**, a coordenação pode marcar **Exigir troca de senha no próximo login** (por exemplo, depois de redefinir a senha de alguém). Na tela de login, **Esqueceu sua senha?** envia um link por email. Qualquer pessoa pode trocar a senha em **Alterar senha**, no rodapé do menu.
+- **Login:** por padrão a sessão acaba ao fechar o navegador. Marque **Manter conectado** só no seu computador pessoal. Em **Sair de todos os dispositivos** (rodapé do menu) você encerra sessões esquecidas em outros computadores. Trocar a senha também encerra as outras sessões.
+- **Política de privacidade:** link na tela de login e no rodapé do menu.

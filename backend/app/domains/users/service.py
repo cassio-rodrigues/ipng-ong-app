@@ -57,7 +57,7 @@ async def create_user(db: AsyncSession, data: UserCreate) -> User:
 
 
 async def update_user(db: AsyncSession, user: User, data: UserUpdate) -> User:
-    for field, value in data.model_dump(exclude_none=True, exclude={"password", "atribuicoes"}).items():
+    for field, value in data.model_dump(exclude_none=True, exclude={"password", "atribuicoes", "must_change_password"}).items():
         if field == "name" and value:
             value = value.strip().title()
         setattr(user, field, value)
@@ -66,7 +66,11 @@ async def update_user(db: AsyncSession, user: User, data: UserUpdate) -> User:
         user.atribuicoes = _clean_atribuicoes(data.atribuicoes)
     if data.password:
         user.password_hash = hash_password(data.password)
-        user.must_change_password = False
+        user.token_version = (user.token_version or 0) + 1
+        # Senha definida por outra pessoa é provisória, salvo se o admin desmarcar
+        user.must_change_password = True if data.must_change_password is None else data.must_change_password
+    elif data.must_change_password is not None:
+        user.must_change_password = data.must_change_password
     await db.commit()
     await db.refresh(user)
     return user

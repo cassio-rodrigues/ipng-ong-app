@@ -1,5 +1,6 @@
 import axios from "axios"
 import { toast } from "sonner"
+import { clearSession, getSession } from "@/lib/session"
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
 
@@ -10,7 +11,7 @@ export const api = axios.create({
 
 api.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
-    const token = localStorage.getItem("access_token")
+    const token = getSession("access_token")
     if (token) config.headers.Authorization = `Bearer ${token}`
   }
   return config
@@ -22,9 +23,7 @@ api.interceptors.response.use(
     const status = error.response?.status
 
     if (status === 401 && typeof window !== "undefined") {
-      localStorage.removeItem("access_token")
-      localStorage.removeItem("refresh_token")
-      localStorage.removeItem("user")
+      clearSession()
       window.location.href = "/login"
       return Promise.reject(error)
     }
@@ -62,7 +61,12 @@ export const authApi = {
   refresh: (refresh_token: string) =>
     api.post("/auth/refresh", { refresh_token }),
   changePassword: (current_password: string, new_password: string) =>
-    api.post("/auth/change-password", { current_password, new_password }),
+    api.post<{ access_token: string; refresh_token: string }>("/auth/change-password", { current_password, new_password }),
+  logoutAll: () => api.post("/auth/logout-all"),
+  forgotPassword: (email: string) =>
+    api.post<{ detail: string; email_enabled: boolean }>("/auth/forgot-password", { email }),
+  resetPassword: (token: string, new_password: string) =>
+    api.post<{ detail: string }>("/auth/reset-password", { token, new_password }),
 }
 
 // Users
@@ -119,6 +123,7 @@ export const studentsApi = {
   list: (params?: { unit_id?: string; status?: string; teacher_id?: string; class_id?: string }) =>
     api.get("/students", { params }),
   get: (id: string) => api.get(`/students/${id}`),
+  anonymize: (id: string) => api.post(`/students/${id}/anonymize`),
   create: (data: object) => api.post("/students", data),
   update: (id: string, data: object) => api.patch(`/students/${id}`, data),
   getEnrollments: (id: string) => api.get(`/students/${id}/enrollments`),
