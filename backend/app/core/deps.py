@@ -39,6 +39,8 @@ async def get_current_user(
     user = result.scalar_one_or_none()
     if not user or user.status != "active":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuário inativo ou não encontrado")
+    if payload.get("ver", 0) != (user.token_version or 0):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Sessão encerrada. Entre novamente")
 
     # Autor das alterações gravadas na auditoria durante esta requisição
     current_user_id.set(user.id)

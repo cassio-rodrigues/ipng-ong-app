@@ -50,6 +50,10 @@ class StudentResponse(StudentBase):
     id: uuid.UUID
     status: str | None = None
     created_at: datetime | None = None
+    terms_accepted_at: datetime | None = None
+    terms_version: str | None = None
+    consent_given_by: str | None = None
+    image_consent_at: datetime | None = None
 
 
 class StudentListItem(StudentResponse):

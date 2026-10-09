@@ -1,4 +1,4 @@
-.PHONY: up down migrate seed seed-demo logs shell reset prod-up prod-down prod-logs prod-migrate prod-deploy ssl-init
+.PHONY: up down migrate seed seed-demo logs shell reset prod-up prod-down prod-logs prod-migrate prod-deploy prod-backup ssl-init
 
 # ── Desenvolvimento ────────────────────────────────────────────────────────────
 
@@ -43,6 +43,10 @@ prod-logs:
 
 prod-migrate:
 	docker compose -f docker-compose.prod.yml exec backend alembic upgrade head
+
+# Backup criptografado do banco (requer BACKUP_PASSPHRASE no .env). Ver scripts/backup.sh
+prod-backup:
+	./scripts/backup.sh
 
 prod-deploy:
 	git pull

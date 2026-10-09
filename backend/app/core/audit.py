@@ -18,8 +18,15 @@ from sqlalchemy.orm import Session
 
 current_user_id: ContextVar[uuid.UUID | None] = ContextVar("current_user_id", default=None)
 
-# Campos que nunca têm o valor gravado no log — só a indicação de que mudaram
-MASKED_FIELDS = {"password_hash"}
+# Campos que nunca têm o valor gravado no log — só a indicação de que mudaram.
+# Documentos, contato e nascimento ficam de fora para que excluir ou anonimizar um aluno
+# apague esses dados de fato (LGPD art. 18, VI) e o log não vire uma segunda cópia do cadastro.
+MASKED_FIELDS = {
+    "password_hash", "cpf", "rg", "guardian_cpf", "guardian_rg", "address",
+    "email", "phone", "telefone", "birth_date", "guardian_name", "consent_given_by",
+}
+# Ligado durante uma anonimização: o log registra quais campos mudaram, sem nenhum valor
+redact_all_values: ContextVar[bool] = ContextVar("redact_all_values", default=False)
 # Campos usados (nesta ordem) como rótulo legível da entidade
 LABEL_FIELDS = ("full_name", "name", "title")
 
@@ -37,6 +44,8 @@ def _json(value: Any) -> Any:
 
 
 def _masked(key: str, value: Any) -> Any:
+    if redact_all_values.get() and value is not None:
+        return "***"
     return "***" if key in MASKED_FIELDS and value is not None else _json(value)
 
 
@@ -113,7 +122,8 @@ def _record_audit(session: Session, flush_context, instances) -> None:
             continue
         entries.append(AuditLog(
             user_id=user_id, action="update", entity_type=obj.__tablename__,
-            entity_id=_ensure_pk(obj), label=_label(obj), details={"changes": changes},
+            entity_id=_ensure_pk(obj), label=None if redact_all_values.get() else _label(obj),
+            details={"changes": changes},
         ))
 
     for obj in session.deleted:

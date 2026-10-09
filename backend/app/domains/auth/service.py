@@ -19,7 +19,7 @@ async def authenticate(db: AsyncSession, email: str, password: str) -> User | No
 
 def build_tokens(user: User) -> dict:
     return {
-        "access_token": create_access_token(str(user.id), user.email or "", user.role or ""),
-        "refresh_token": create_refresh_token(str(user.id)),
+        "access_token": create_access_token(str(user.id), user.email or "", user.role or "", user.token_version or 0),
+        "refresh_token": create_refresh_token(str(user.id), user.token_version or 0),
         "token_type": "bearer",
     }

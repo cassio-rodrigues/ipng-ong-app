@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.deps import check_owner, get_current_user, require_role
+from app.core.privacy import SENSITIVE_USER_FIELDS, redact
 from app.domains.users.schemas import TeacherProfileBase, TeacherProfileResponse, UserCreate, UserResponse, UserUpdate
 from app.domains.users.service import (
     create_user,
@@ -41,11 +42,13 @@ async def create(
 
 
 @router.get("/{user_id}", response_model=UserResponse)
-async def get_one(user_id: uuid.UUID, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
+async def get_one(user_id: uuid.UUID, db: AsyncSession = Depends(get_db), current_user=Depends(get_current_user)):
     user = await get_user(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
-    return user
+    response = UserResponse.model_validate(user)
+    # Colegas veem nome e perfil; contato e dados pessoais só o próprio usuário e a coordenação
+    return response if user.id == current_user.id else redact(response, current_user, SENSITIVE_USER_FIELDS)
 
 
 @router.patch("/{user_id}", response_model=UserResponse)
@@ -53,11 +56,16 @@ async def update(
     user_id: uuid.UUID,
     body: UserUpdate,
     db: AsyncSession = Depends(get_db),
-    _=Depends(require_role("admin", "coordinator")),
+    current_user=Depends(require_role("admin", "coordinator")),
 ):
     user = await get_user(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    # Coordenação não mexe em contas de admin nem concede perfil de admin (inclusive a si mesma)
+    if current_user.role != "admin" and (
+        user.role == "admin" or body.role == "admin" or "admin" in (body.atribuicoes or [])
+    ):
+        raise HTTPException(status_code=403, detail="Somente um admin pode alterar contas ou perfis de admin")
     return await update_user(db, user, body)
 
 

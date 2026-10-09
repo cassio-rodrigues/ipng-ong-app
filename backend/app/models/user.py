@@ -23,6 +23,8 @@ class User(Base):
     birth_date: Mapped[date | None] = mapped_column(Date)
     status: Mapped[str | None] = mapped_column(String, default="active")
     must_change_password: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Incrementado para derrubar todas as sessões abertas (troca de senha, "sair de todos")
+    token_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     atribuicoes = Column(ARRAY(String), nullable=True)
     created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

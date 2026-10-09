@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,13 +14,14 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [remember, setRemember] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError("")
     setLoading(true)
     try {
-      await login(email, password)
+      await login(email, password, remember)
     } catch {
       setError("Email ou senha inválidos.")
     } finally {
@@ -49,7 +51,10 @@ export default function LoginPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="password">Senha</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Senha</Label>
+                <Link href="/esqueci-senha" className="text-xs text-muted-foreground underline-offset-2 hover:underline">Esqueceu sua senha?</Link>
+              </div>
               <Input
                 id="password"
                 type="password"
@@ -59,11 +64,21 @@ export default function LoginPage() {
                 required
               />
             </div>
+            <label className="flex items-start gap-2 text-sm cursor-pointer">
+              <input type="checkbox" className="h-4 w-4 mt-0.5" checked={remember} onChange={e => setRemember(e.target.checked)} />
+              <span>
+                Manter conectado
+                <span className="block text-xs text-muted-foreground">Não marque em computador compartilhado.</span>
+              </span>
+            </label>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Entrando…" : "Entrar"}
             </Button>
           </form>
+          <p className="mt-4 text-center text-xs text-muted-foreground">
+            <Link href="/privacidade" className="underline-offset-2 hover:underline">Política de privacidade</Link>
+          </p>
         </CardContent>
       </Card>
     </div>

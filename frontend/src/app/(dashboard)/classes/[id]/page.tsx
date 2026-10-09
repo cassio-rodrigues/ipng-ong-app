@@ -87,9 +87,8 @@ export default function ClassDetailPage() {
 
   async function load() {
     try {
-      const [cRes, sRes, uRes, lRes, aRes, eRes, actRes, hRes] = await Promise.all([
+      const [cRes, uRes, lRes, aRes, eRes, actRes, hRes] = await Promise.all([
         classesApi.get(id),
-        classesApi.getSummary(id),
         unitsApi.list(),
         lessonsApi.list({ class_id: id }),
         assessmentsApi.list({ class_id: id }),
@@ -104,7 +103,9 @@ export default function ClassDetailPage() {
       setCls(c)
       setLessons(lRes.data)
       setAssessments(aRes.data)
-      setSummary(sRes.data)
+      // Frequência e notas por aluno só para quem dá aula na turma (ou coordenação) — LGPD
+      const teachesHere = c.main_teacher_id === user?.id || c.assignments.some(a => a.teacher_id === user?.id)
+      setSummary(role !== "teacher" || teachesHere ? (await classesApi.getSummary(id)).data : null)
       setUnits(uRes.data)
       if (role === "admin" || role === "coordinator") {
         // Admin/coordenação: lista completa, necessária para adicionar professores

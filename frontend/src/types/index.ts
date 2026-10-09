@@ -113,6 +113,11 @@ export interface Student {
   guardian_cpf: string | null
   terms_accepted: boolean | null
   image_consent: boolean | null
+  // Registro do consentimento, preenchido pelo servidor
+  terms_accepted_at?: string | null
+  terms_version?: string | null
+  consent_given_by?: string | null
+  image_consent_at?: string | null
   class_ids?: string[]
 }
 

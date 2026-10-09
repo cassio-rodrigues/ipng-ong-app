@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
+import { getSession } from "@/lib/session"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
 
@@ -10,7 +11,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!loading && !user && typeof window !== "undefined") {
-      const token = localStorage.getItem("access_token")
+      const token = getSession("access_token")
       if (!token) router.replace("/login")
     }
   }, [user, loading, router])
