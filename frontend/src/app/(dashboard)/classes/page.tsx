@@ -10,11 +10,11 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Pencil, Plus, Trash2, Download, Upload, FileSpreadsheet, ExternalLink, AlertTriangle } from "lucide-react"
+import { Pencil, Plus, Trash2, Download, Upload, FileSpreadsheet, ExternalLink, AlertTriangle, X } from "lucide-react"
+import { Combobox } from "@/components/ui/combobox"
 import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
 import { exportToExcel, downloadTemplate, parseExcel, fmtDate } from "@/lib/excel"
-import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { canTeach } from "@/lib/users"
 import { WEEKDAYS, formatSchedule, generateResultMessage, parseWeekday, parseTime } from "@/lib/schedule"
@@ -134,6 +134,7 @@ export default function ClassesPage() {
   const F = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
   const unitMap = Object.fromEntries(units.map(u => [u.id, u.name]))
   const teacherMap = Object.fromEntries(teachers.map(t => [t.id, t.name]))
+  const teacherOptions = teachers.map(t => ({ value: t.id, label: t.name ?? t.email ?? t.id }))
   const unitNameMap = Object.fromEntries(units.map(u => [u.name?.toLowerCase() ?? "", u.id]))
   const teacherEmailMap = Object.fromEntries(teachers.map(t => [t.email?.toLowerCase() ?? "", t.id]))
   const bookTitleMap = Object.fromEntries(books.map(b => [b.title?.toLowerCase() ?? "", b.id]))
@@ -220,34 +221,41 @@ export default function ClassesPage() {
       </div>
       <div className="space-y-1.5">
         <Label>Professor principal</Label>
-        <Select
+        <Combobox
+          options={teacherOptions}
           value={form.main_teacher_id}
           onValueChange={v => setForm(f => ({ ...f, main_teacher_id: v, extra_teacher_ids: f.extra_teacher_ids.filter(id => id !== v) }))}
-        >
-          <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
-          <SelectContent>{teachers.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
-        </Select>
+          placeholder="Buscar professor pelo nome…"
+          emptyText="Nenhum professor encontrado"
+        />
       </div>
       <div className="space-y-1.5">
         <Label>Professores adicionais</Label>
-        <div className="flex flex-wrap gap-2">
-          {teachers.filter(t => t.id !== form.main_teacher_id).map(t => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => toggleExtraTeacher(t.id)}
-              className={cn(
-                "px-3 py-1 rounded-full text-xs border transition-colors",
-                form.extra_teacher_ids.includes(t.id)
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "border-input text-muted-foreground hover:border-primary"
-              )}
-            >
-              {t.name}
-            </button>
-          ))}
-          {teachers.length === 0 && <span className="text-xs text-muted-foreground">Nenhum professor cadastrado</span>}
-        </div>
+        {form.extra_teacher_ids.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {form.extra_teacher_ids.map(tid => (
+              <span key={tid} className="inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-xs text-primary-foreground">
+                {teacherMap[tid] ?? "—"}
+                <button type="button" onClick={() => toggleExtraTeacher(tid)} aria-label={`Remover ${teacherMap[tid] ?? "professor"}`} className="opacity-80 hover:opacity-100">
+                  <X className="size-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        {teachers.length === 0 ? (
+          <span className="text-xs text-muted-foreground">Nenhum professor cadastrado</span>
+        ) : (
+          // Remonta ao adicionar para limpar o campo de busca
+          <Combobox
+            key={form.extra_teacher_ids.join(",")}
+            options={teacherOptions.filter(o => o.value !== form.main_teacher_id && !form.extra_teacher_ids.includes(o.value))}
+            value=""
+            onValueChange={toggleExtraTeacher}
+            placeholder="Adicionar professor…"
+            emptyText="Nenhum professor encontrado"
+          />
+        )}
       </div>
       <div className="space-y-1.5">
         <Label>Livro base</Label>
