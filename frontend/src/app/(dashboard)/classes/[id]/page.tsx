@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useAuth } from "@/hooks/use-auth"
 import { cn } from "@/lib/utils"
+import { Combobox } from "@/components/ui/combobox"
 import { attendanceLevel, formatRate, ATTENDANCE_TEXT, ATTENDANCE_LEVEL_LABEL } from "@/lib/attendance"
 import { useAlerts } from "@/hooks/use-alerts"
 import { AlertList } from "@/components/shared/AlertList"
@@ -272,10 +273,14 @@ export default function ClassDetailPage() {
               </div>
               {canEdit && (
                 <form onSubmit={handleAddTeacher} className="flex gap-2 pt-1">
-                  <Select value={addTeacherId} onValueChange={setAddTeacherId}>
-                    <SelectTrigger className="w-64"><SelectValue placeholder="Adicionar professor" /></SelectTrigger>
-                    <SelectContent>{availableTeachers.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
-                  </Select>
+                  <Combobox
+                    className="w-64 h-9"
+                    options={availableTeachers.map(t => ({ value: t.id, label: t.name ?? t.email ?? t.id }))}
+                    value={addTeacherId}
+                    onValueChange={setAddTeacherId}
+                    placeholder="Buscar professor pelo nome…"
+                    emptyText="Nenhum professor encontrado"
+                  />
                   <Button type="submit" size="sm" disabled={saving || !addTeacherId}><UserPlus className="size-4 mr-2" />Adicionar</Button>
                 </form>
               )}

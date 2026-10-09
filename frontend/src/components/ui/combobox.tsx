@@ -21,6 +21,9 @@ interface ComboboxProps {
   className?: string
 }
 
+// Busca sem diferenciar maiúsculas nem acentos ("fabio" encontra "Fábio")
+const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+
 export function Combobox({
   options,
   value,
@@ -35,7 +38,7 @@ export function Combobox({
 
   const selected = options.find(o => o.value === value)
   const displayValue = open ? query : (selected?.label ?? "")
-  const filtered = options.filter(o => o.label.toLowerCase().includes(query.trim().toLowerCase()))
+  const filtered = options.filter(o => normalize(o.label).includes(normalize(query.trim())))
 
   function selectOption(o: ComboboxOption) {
     onValueChange(o.value)
@@ -78,7 +81,8 @@ export function Combobox({
           onOpenAutoFocus={e => e.preventDefault()}
           className="z-50 w-[--radix-popover-trigger-width] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
         >
-          <div className="max-h-64 overflow-y-auto">
+          {/* Dentro de um Dialog, o bloqueio de rolagem dele engoliria a roda do mouse na lista (que está em um portal) */}
+          <div className="max-h-64 overflow-y-auto overscroll-contain" onWheel={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()}>
             {filtered.length === 0 && (
               <p className="py-4 text-center text-sm text-muted-foreground">{emptyText}</p>
             )}
