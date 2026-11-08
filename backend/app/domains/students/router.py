@@ -3,6 +3,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -30,6 +31,7 @@ from app.domains.students.service import (
 )
 from app.domains.students.history_schemas import StudentHistory
 from app.domains.students.history_service import get_student_history
+from app.models.book_loan import BookLoan
 
 router = APIRouter(prefix="/students", tags=["Students"])
 
@@ -132,6 +134,17 @@ async def delete_student(
     student = await get_student(db, student_id)
     if not student:
         raise HTTPException(status_code=404, detail="Aluno não encontrado")
+    # Empréstimo em aberto: apagar o registro liberaria o exemplar sem o livro ter voltado
+    active_loans = await db.scalar(
+        select(func.count()).select_from(BookLoan)
+        .where(BookLoan.student_id == student_id, BookLoan.status == "active")
+    )
+    if active_loans:
+        raise HTTPException(
+            status_code=409,
+            detail="Aluno possui empréstimo de livro em aberto. Registre a devolução antes de excluir.",
+        )
+    # O histórico de empréstimos devolvidos sai junto (ON DELETE CASCADE)
     await db.delete(student)
     await db.commit()
 
