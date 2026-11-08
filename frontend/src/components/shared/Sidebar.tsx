@@ -24,6 +24,7 @@ import {
   BellRing,
   BarChart3,
   KeyRound,
+  FileText,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/hooks/use-auth"
@@ -38,6 +39,7 @@ const allNavItems = [
   { href: "/pendencias", label: "Pendências", icon: BellRing,       teacherHidden: false },
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, teacherHidden: false },
   { href: "/analise",   label: "Análise",   icon: BarChart3,       teacherHidden: true },
+  { href: "/resumo",    label: "Resumo das aulas", icon: FileText,  teacherHidden: true },
   { href: "/users", label: "Usuários", icon: Users, teacherHidden: true },
   { href: "/units", label: "Unidades", icon: Building2, teacherHidden: true },
   { href: "/books", label: "Livros", icon: BookOpen, teacherHidden: true },

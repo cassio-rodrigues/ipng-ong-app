@@ -343,3 +343,42 @@ export interface PeriodStats {
   attendance_rate: { current: number; previous: number }
   absences: { current: number; previous: number }
 }
+
+// Resumo de relatórios de aula (/stats/report-summary)
+export interface SummaryLesson {
+  date: string
+  status: string | null
+  teacher: string | null
+  chapter: string | null
+  attended: number
+  total: number
+  summary: string | null
+  activities_done: string | null
+  homework: string | null
+  observations: string | null
+}
+
+export interface SummaryClass {
+  id: string
+  name: string | null
+  unit: string | null
+  level: string | null
+  teacher: string | null
+  attendance_rate: number | null
+  lessons: SummaryLesson[]
+  low_attendance: { name: string; rate: number; absences: number; total: number }[]
+  student_names: string[]
+}
+
+export interface ReportSummary {
+  start: string
+  end: string
+  active_students: number
+  new_students: number
+  lessons_given: number
+  lessons_with_report: number
+  attendance_rate: number
+  absences: number
+  classes: SummaryClass[]
+  highlights: { student: string | null; class_name: string | null; type: string | null; title: string | null; date: string }[]
+}
