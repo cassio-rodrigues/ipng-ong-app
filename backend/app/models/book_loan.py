@@ -14,7 +14,7 @@ class BookLoan(Base):
     __tablename__ = "book_loans"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
-    student_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("students.id"))
+    student_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("students.id", ondelete="CASCADE"))
     book_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("books.id"))
     borrowed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"))
     due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

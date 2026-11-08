@@ -92,3 +92,58 @@ class PeriodStats(BaseModel):
     lessons_given: PeriodMetric      # aulas com presença lançada
     attendance_rate: PeriodMetric    # % presente+atrasado sobre registros do período
     absences: PeriodMetric
+
+
+# ── Resumo de relatórios (texto montado no navegador) ──────────────────────────
+
+class SummaryLesson(BaseModel):
+    date: str
+    status: str | None = None
+    teacher: str | None = None
+    chapter: str | None = None
+    attended: int = 0
+    total: int = 0
+    summary: str | None = None
+    activities_done: str | None = None
+    homework: str | None = None
+    observations: str | None = None
+
+
+class SummaryLowAttendance(BaseModel):
+    name: str
+    rate: float
+    absences: int
+    total: int
+
+
+class SummaryClass(BaseModel):
+    id: str
+    name: str | None = None
+    unit: str | None = None
+    level: str | None = None
+    teacher: str | None = None
+    attendance_rate: float | None = None
+    lessons: list[SummaryLesson]
+    low_attendance: list[SummaryLowAttendance]
+    student_names: list[str]       # para o navegador ocultar nomes no texto copiado
+
+
+class SummaryHighlight(BaseModel):
+    student: str | None = None
+    class_name: str | None = None
+    type: str | None = None
+    title: str | None = None
+    date: str
+
+
+class ReportSummary(BaseModel):
+    start: str
+    end: str
+    active_students: int
+    new_students: int
+    lessons_given: int
+    lessons_with_report: int
+    attendance_rate: float
+    absences: int
+    classes: list[SummaryClass]
+    highlights: list[SummaryHighlight]

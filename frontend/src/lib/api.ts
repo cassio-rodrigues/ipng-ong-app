@@ -225,7 +225,10 @@ export const statsApi = {
   dashboard: () => api.get("/stats/dashboard"),
   birthdays: (month?: number) => api.get("/stats/birthdays", { params: month ? { month } : {} }),
   analysis: () => api.get("/stats/students-analysis"),
-  period: (period: "30d" | "semester" | "year") => api.get("/stats/period", { params: { period } }),
+  period: (period: "30d" | "semester" | "year" | "custom", range?: { start_date: string; end_date: string }) =>
+    api.get("/stats/period", { params: { period, ...range } }),
+  reportSummary: (start_date: string, end_date: string) =>
+    api.get("/stats/report-summary", { params: { start_date, end_date } }),
 }
 
 // Pendências (alertas calculados) e acompanhamentos

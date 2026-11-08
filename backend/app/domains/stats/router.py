@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date as date_type, datetime, timedelta
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import case, func, or_, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +16,11 @@ from app.domains.stats.schemas import (
     AnalysisStudent,
     PeriodMetric,
     PeriodStats,
+    ReportSummary,
+    SummaryClass,
+    SummaryHighlight,
+    SummaryLesson,
+    SummaryLowAttendance,
     BirthdayPerson,
     ClassCount,
     ClassStats,
@@ -26,10 +31,11 @@ from app.domains.stats.schemas import (
 )
 from app.models.attendance import Attendance
 from app.models.class_ import Class_
+from app.models.activity import StudentHighlight
+from app.models.book import BookChapter
 from app.models.lesson import Lesson
 from app.models.student import Enrollment, Student
 from app.models.unit import Unit
-from app.models.user import User
 from app.models.user import User
 
 router = APIRouter(prefix="/stats", tags=["Stats"])
@@ -265,40 +271,194 @@ def _period_bounds(period: str, now: datetime) -> tuple[datetime, datetime, date
     return start, now, prev_start, prev_start + (now - start)
 
 
+async def _period_metrics(db: AsyncSession, a: datetime, b: datetime) -> tuple[int, int, float, int]:
+    """(novos alunos, aulas com chamada, % frequência, faltas) no intervalo [a, b)."""
+    new = (await db.execute(
+        select(func.count()).select_from(Student).where(Student.created_at >= a, Student.created_at < b)
+    )).scalar_one()
+    att = (await db.execute(
+        select(
+            func.count(func.distinct(Attendance.lesson_id)).label("lessons"),
+            func.count().label("total"),
+            func.sum(case((Attendance.status.in_(["present", "late"]), 1), else_=0)).label("attended"),
+            func.sum(case((Attendance.status == "absent", 1), else_=0)).label("absent"),
+        )
+        .join(Lesson, Lesson.id == Attendance.lesson_id)
+        .where(Lesson.scheduled_at >= a, Lesson.scheduled_at < b)
+    )).one()
+    rate = round((att.attended or 0) / att.total * 100, 1) if att.total else 0.0
+    return new, att.lessons or 0, rate, att.absent or 0
+
+
 @router.get("/period", response_model=PeriodStats)
 async def period_stats(
     period: str = "30d",
+    start_date: date_type | None = None,
+    end_date: date_type | None = None,
     db: AsyncSession = Depends(get_db),
     _=Depends(require_role("admin", "coordinator")),
 ):
-    if period not in ("30d", "semester", "year"):
-        period = "30d"
     now = datetime.now(LOCAL_TZ)
-    start, end, pstart, pend = _period_bounds(period, now)
+    if period == "custom":
+        # Intervalo escolhido (datas inclusivas) vs o intervalo de mesma duração logo antes dele
+        if not start_date or not end_date:
+            raise HTTPException(status_code=422, detail="Informe a data inicial e a final")
+        if start_date > end_date:
+            raise HTTPException(status_code=422, detail="A data inicial deve ser anterior à final")
+        start = datetime.combine(start_date, datetime.min.time(), tzinfo=LOCAL_TZ)
+        end = datetime.combine(end_date + timedelta(days=1), datetime.min.time(), tzinfo=LOCAL_TZ)
+        pend = start
+        pstart = start - (end - start)
+        shown_end, shown_pend = end_date, (pend - timedelta(days=1)).date()
+    else:
+        if period not in ("30d", "semester", "year"):
+            period = "30d"
+        start, end, pstart, pend = _period_bounds(period, now)
+        shown_end, shown_pend = end.date(), pend.date()
 
-    async def metrics(a: datetime, b: datetime) -> tuple[int, int, float, int]:
-        new = (await db.execute(
-            select(func.count()).select_from(Student).where(Student.created_at >= a, Student.created_at < b)
-        )).scalar_one()
-        att = (await db.execute(
-            select(
-                func.count(func.distinct(Attendance.lesson_id)).label("lessons"),
-                func.count().label("total"),
-                func.sum(case((Attendance.status.in_(["present", "late"]), 1), else_=0)).label("attended"),
-                func.sum(case((Attendance.status == "absent", 1), else_=0)).label("absent"),
-            )
-            .join(Lesson, Lesson.id == Attendance.lesson_id)
-            .where(Lesson.scheduled_at >= a, Lesson.scheduled_at < b)
-        )).one()
-        rate = round((att.attended or 0) / att.total * 100, 1) if att.total else 0.0
-        return new, att.lessons or 0, rate, att.absent or 0
-
-    cur, prev = await metrics(start, end), await metrics(pstart, pend)
+    cur, prev = await _period_metrics(db, start, end), await _period_metrics(db, pstart, pend)
     return PeriodStats(
-        period=period, start=start.date().isoformat(), end=end.date().isoformat(),
-        previous_start=pstart.date().isoformat(), previous_end=pend.date().isoformat(),
+        period=period, start=start.date().isoformat(), end=shown_end.isoformat(),
+        previous_start=pstart.date().isoformat(), previous_end=shown_pend.isoformat(),
         new_students=PeriodMetric(current=cur[0], previous=prev[0]),
         lessons_given=PeriodMetric(current=cur[1], previous=prev[1]),
         attendance_rate=PeriodMetric(current=cur[2], previous=prev[2]),
         absences=PeriodMetric(current=cur[3], previous=prev[3]),
+    )
+
+
+# ── Resumo de relatórios de aula ───────────────────────────────────────────────
+# Junta, para o intervalo, os números gerais e o que cada turma registrou nas aulas.
+# O texto é montado no navegador. Só gestão: contém nomes e observações sobre alunos.
+
+SUMMARY_LOW_RATE = 60.0       # mesmo corte da pendência de evasão
+SUMMARY_MIN_RECORDS = 3       # abaixo disso a porcentagem não diz muito num recorte curto
+
+
+@router.get("/report-summary", response_model=ReportSummary)
+async def report_summary(
+    start_date: date_type,
+    end_date: date_type,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_role("admin", "coordinator")),
+):
+    if start_date > end_date:
+        raise HTTPException(status_code=422, detail="A data inicial deve ser anterior à final")
+    if (end_date - start_date).days > 366:
+        raise HTTPException(status_code=422, detail="Escolha um intervalo de até um ano")
+    a = datetime.combine(start_date, datetime.min.time(), tzinfo=LOCAL_TZ)
+    b = datetime.combine(end_date + timedelta(days=1), datetime.min.time(), tzinfo=LOCAL_TZ)
+
+    new, lessons_given, rate, absences = await _period_metrics(db, a, b)
+    active_students = (await db.execute(
+        select(func.count()).select_from(Student).where(Student.status == "active")
+    )).scalar_one()
+
+    lessons = (await db.execute(
+        select(Lesson).where(Lesson.scheduled_at >= a, Lesson.scheduled_at < b,
+               or_(Lesson.status.is_(None), Lesson.status != "cancelled"))
+        .order_by(Lesson.scheduled_at)
+    )).scalars().all()
+    lesson_ids = [l.id for l in lessons]
+
+    # Presença por aula e por aluno/turma no intervalo
+    per_lesson: dict = {}
+    per_student: dict = {}
+    if lesson_ids:
+        rows = (await db.execute(
+            select(Attendance.lesson_id, Attendance.student_id, Attendance.status, Lesson.class_id)
+            .join(Lesson, Lesson.id == Attendance.lesson_id)
+            .where(Attendance.lesson_id.in_(lesson_ids))
+        )).all()
+        for r in rows:
+            ok = r.status in ("present", "late")
+            pl = per_lesson.setdefault(r.lesson_id, [0, 0])
+            pl[0] += ok
+            pl[1] += 1
+            ps = per_student.setdefault((r.class_id, r.student_id), [0, 0, 0])
+            ps[0] += ok
+            ps[1] += 1
+            ps[2] += r.status == "absent"
+
+    chapter_ids = {l.chapter_id for l in lessons if l.chapter_id}
+    chapters = {}
+    if chapter_ids:
+        chapters = dict((await db.execute(
+            select(BookChapter.id, BookChapter.title).where(BookChapter.id.in_(chapter_ids))
+        )).all())
+
+    class_ids = {l.class_id for l in lessons if l.class_id}
+    classes = {}
+    roster: dict = {}
+    if class_ids:
+        classes = {c.id: c for c in (await db.execute(select(Class_).where(Class_.id.in_(class_ids)))).scalars().all()}
+        for cid, sid, name in (await db.execute(
+            select(Enrollment.class_id, Student.id, Student.full_name)
+            .join(Student, Student.id == Enrollment.student_id)
+            .where(Enrollment.class_id.in_(class_ids))
+        )).all():
+            roster.setdefault(cid, {})[sid] = name
+
+    by_class: dict = {}
+    with_report = 0
+    for l in lessons:
+        if not l.class_id:
+            continue
+        rep = l.report
+        if rep and any([rep.summary, rep.activities_done, rep.homework, rep.observations]):
+            with_report += 1
+        att = per_lesson.get(l.id, [0, 0])
+        by_class.setdefault(l.class_id, []).append(SummaryLesson(
+            date=l.scheduled_at.astimezone(LOCAL_TZ).date().isoformat() if l.scheduled_at else "",
+            status=l.status,
+            teacher=l.teacher.name if l.teacher else None,
+            chapter=chapters.get(l.chapter_id),
+            attended=att[0], total=att[1],
+            summary=rep.summary if rep else None,
+            activities_done=rep.activities_done if rep else None,
+            homework=rep.homework if rep else None,
+            observations=rep.observations if rep else None,
+        ))
+
+    out_classes = []
+    for cid, items in by_class.items():
+        c = classes.get(cid)
+        names = roster.get(cid, {})
+        low = []
+        tot_ok = tot = 0
+        for (k_cid, sid), (ok, total, absent) in per_student.items():
+            if k_cid != cid:
+                continue
+            tot_ok += ok
+            tot += total
+            r = ok / total * 100
+            if total >= SUMMARY_MIN_RECORDS and r < SUMMARY_LOW_RATE:
+                low.append(SummaryLowAttendance(name=names.get(sid) or "Aluno", rate=round(r, 1), absences=absent, total=total))
+        low.sort(key=lambda x: x.rate)
+        out_classes.append(SummaryClass(
+            id=str(cid), name=c.name if c else None,
+            unit=c.unit.name if c and c.unit else None, level=c.level if c else None,
+            teacher=c.main_teacher.name if c and c.main_teacher else None,
+            attendance_rate=round(tot_ok / tot * 100, 1) if tot else None,
+            lessons=items, low_attendance=low,
+            student_names=sorted({n for n in names.values() if n}),
+        ))
+    out_classes.sort(key=lambda x: ((x.unit or "").lower(), (x.name or "").lower()))
+
+    hl = (await db.execute(
+        select(StudentHighlight).where(StudentHighlight.created_at >= a, StudentHighlight.created_at < b)
+        .order_by(StudentHighlight.created_at)
+    )).scalars().all()
+    highlights = [SummaryHighlight(
+        student=h.student.full_name if h.student else None,
+        class_name=h.class_.name if h.class_ else None,
+        type=h.highlight_type, title=h.title,
+        date=h.created_at.astimezone(LOCAL_TZ).date().isoformat() if h.created_at else "",
+    ) for h in hl]
+
+    return ReportSummary(
+        start=start_date.isoformat(), end=end_date.isoformat(),
+        active_students=active_students, new_students=new, lessons_given=lessons_given,
+        lessons_with_report=with_report, attendance_rate=rate, absences=absences,
+        classes=out_classes, highlights=highlights,
     )
