@@ -6,9 +6,16 @@ import { statsApi } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import type { PeriodStats } from "@/types"
 import { Card, CardContent } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 
 type Period = PeriodStats["period"]
-const PERIODS: [Period, string][] = [["30d", "Últimos 30 dias"], ["semester", "Este semestre"], ["year", "Este ano"]]
+const PERIODS: [Period, string][] = [
+  ["30d", "Últimos 30 dias"], ["semester", "Este semestre"], ["year", "Este ano"], ["custom", "Personalizado"],
+]
+
+function isoDay(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+}
 
 function fmtDay(iso: string) {
   const [y, m, d] = iso.split("-")
@@ -17,15 +24,21 @@ function fmtDay(iso: string) {
 
 // Indicadores do período com comparação ao período anterior equivalente.
 // Semestre/ano comparam o trecho até hoje com o mesmo trecho do semestre/ano anterior.
+// Personalizado compara o intervalo escolhido com o de mesma duração logo antes dele.
 export function PeriodComparison() {
   const [period, setPeriod] = useState<Period>("30d")
   const [data, setData] = useState<PeriodStats | null>(null)
+  const [startDate, setStartDate] = useState(() => isoDay(new Date(Date.now() - 29 * 864e5)))
+  const [endDate, setEndDate] = useState(() => isoDay(new Date()))
+  const rangeInvalid = period === "custom" && (!startDate || !endDate || startDate > endDate)
 
   useEffect(() => {
+    if (rangeInvalid) return
     let alive = true
-    statsApi.period(period).then(r => { if (alive) setData(r.data) }).catch(() => {})
+    const range = period === "custom" ? { start_date: startDate, end_date: endDate } : undefined
+    statsApi.period(period, range).then(r => { if (alive) setData(r.data) }).catch(() => {})
     return () => { alive = false }
-  }, [period])
+  }, [period, startDate, endDate, rangeInvalid])
 
   return (
     <section className="space-y-3" aria-label="Comparativo por período">
@@ -39,6 +52,18 @@ export function PeriodComparison() {
             </button>
           ))}
         </div>
+        {period === "custom" && (
+          <div className="flex flex-wrap items-center gap-2 text-sm w-full sm:w-auto">
+            <label className="sr-only" htmlFor="pc-start">Data inicial</label>
+            <Input id="pc-start" type="date" className="h-8 w-auto" value={startDate} max={endDate || undefined}
+              onChange={e => setStartDate(e.target.value)} />
+            <span className="text-muted-foreground">a</span>
+            <label className="sr-only" htmlFor="pc-end">Data final</label>
+            <Input id="pc-end" type="date" className="h-8 w-auto" value={endDate} min={startDate || undefined}
+              onChange={e => setEndDate(e.target.value)} />
+            {rangeInvalid && <span className="text-xs text-red-700 dark:text-red-400">Data inicial deve ser anterior à final</span>}
+          </div>
+        )}
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Metric label="Novos alunos" m={data?.new_students} betterWhen="up" />

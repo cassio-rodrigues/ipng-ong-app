@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date as date_type, datetime, timedelta
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import case, func, or_, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -268,13 +268,28 @@ def _period_bounds(period: str, now: datetime) -> tuple[datetime, datetime, date
 @router.get("/period", response_model=PeriodStats)
 async def period_stats(
     period: str = "30d",
+    start_date: date_type | None = None,
+    end_date: date_type | None = None,
     db: AsyncSession = Depends(get_db),
     _=Depends(require_role("admin", "coordinator")),
 ):
-    if period not in ("30d", "semester", "year"):
-        period = "30d"
     now = datetime.now(LOCAL_TZ)
-    start, end, pstart, pend = _period_bounds(period, now)
+    if period == "custom":
+        # Intervalo escolhido (datas inclusivas) vs o intervalo de mesma duração logo antes dele
+        if not start_date or not end_date:
+            raise HTTPException(status_code=422, detail="Informe a data inicial e a final")
+        if start_date > end_date:
+            raise HTTPException(status_code=422, detail="A data inicial deve ser anterior à final")
+        start = datetime.combine(start_date, datetime.min.time(), tzinfo=LOCAL_TZ)
+        end = datetime.combine(end_date + timedelta(days=1), datetime.min.time(), tzinfo=LOCAL_TZ)
+        pend = start
+        pstart = start - (end - start)
+        shown_end, shown_pend = end_date, (pend - timedelta(days=1)).date()
+    else:
+        if period not in ("30d", "semester", "year"):
+            period = "30d"
+        start, end, pstart, pend = _period_bounds(period, now)
+        shown_end, shown_pend = end.date(), pend.date()
 
     async def metrics(a: datetime, b: datetime) -> tuple[int, int, float, int]:
         new = (await db.execute(
@@ -295,8 +310,8 @@ async def period_stats(
 
     cur, prev = await metrics(start, end), await metrics(pstart, pend)
     return PeriodStats(
-        period=period, start=start.date().isoformat(), end=end.date().isoformat(),
-        previous_start=pstart.date().isoformat(), previous_end=pend.date().isoformat(),
+        period=period, start=start.date().isoformat(), end=shown_end.isoformat(),
+        previous_start=pstart.date().isoformat(), previous_end=shown_pend.isoformat(),
         new_students=PeriodMetric(current=cur[0], previous=prev[0]),
         lessons_given=PeriodMetric(current=cur[1], previous=prev[1]),
         attendance_rate=PeriodMetric(current=cur[2], previous=prev[2]),

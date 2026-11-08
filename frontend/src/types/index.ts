@@ -333,7 +333,7 @@ export interface AnalysisStudent {
 }
 
 export interface PeriodStats {
-  period: "30d" | "semester" | "year"
+  period: "30d" | "semester" | "year" | "custom"
   start: string
   end: string
   previous_start: string
